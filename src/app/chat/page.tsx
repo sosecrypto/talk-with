@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { ChatWindow } from '@/components/chat/ChatWindow'
 import { ConversationList } from '@/components/chat/ConversationList'
 import { useChat } from '@/hooks/useChat'
 import { useConversations } from '@/hooks/useConversations'
+import { toast } from '@/lib/toast'
 
 export default function ChatPage() {
   const { data: session } = useSession()
@@ -19,7 +20,9 @@ export default function ChatPage() {
     sendMessage,
     loadConversation,
     resetChat,
-  } = useChat()
+  } = useChat({
+    onError: (error) => toast.error(error),
+  })
 
   const {
     conversations,
@@ -27,13 +30,23 @@ export default function ChatPage() {
     fetchConversation,
     deleteConversation,
     updateConversation,
-  } = useConversations()
+  } = useConversations({
+    onError: (error) => toast.error(error),
+  })
+
+  const prevTitleRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (title && conversationId) {
-      updateConversation(conversationId, { title })
+    // Only update when title actually changes (not on initial load)
+    if (title && conversationId && prevTitleRef.current !== title) {
+      const existingConversation = conversations.find((c) => c.id === conversationId)
+      // Only update if the title differs from what's stored
+      if (!existingConversation || existingConversation.title !== title) {
+        updateConversation(conversationId, { title })
+      }
     }
-  }, [title, conversationId, updateConversation])
+    prevTitleRef.current = title
+  }, [title, conversationId, conversations, updateConversation])
 
   const handleSelectConversation = async (conversation: { id: string }) => {
     const fullConversation = await fetchConversation(conversation.id)
@@ -124,6 +137,7 @@ export default function ChatPage() {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

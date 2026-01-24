@@ -93,14 +93,22 @@ export function useChat(options: UseChatOptions = {}) {
                   })
                 }
               } catch {
-                // Ignore parse errors for incomplete chunks
+                // Only log unexpected parse errors (not incomplete chunks)
+                const trimmedLine = line.slice(6).trim()
+                if (trimmedLine && trimmedLine !== '[DONE]') {
+                  console.warn('Failed to parse SSE data:', trimmedLine)
+                }
               }
             }
           }
         }
       } catch (error) {
         console.error('Chat error:', error)
-        options.onError?.(error instanceof Error ? error.message : 'Unknown error')
+        const errorMessage = error instanceof Error
+          ? error.message
+          : 'Failed to send message. Please try again.'
+        options.onError?.(errorMessage)
+        // Remove the empty assistant message on error
         setMessages((prev) => prev.slice(0, -1))
       } finally {
         setIsStreaming(false)

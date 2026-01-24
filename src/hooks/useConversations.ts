@@ -3,7 +3,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Conversation } from '@/types/chat'
 
-export function useConversations() {
+interface UseConversationsOptions {
+  onError?: (error: string) => void
+}
+
+export function useConversations(options: UseConversationsOptions = {}) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -16,11 +20,13 @@ export function useConversations() {
       const data = await response.json()
       setConversations(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      setError(errorMessage)
+      options.onError?.(errorMessage)
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [options])
 
   const fetchConversation = useCallback(async (id: string): Promise<Conversation | null> => {
     try {
@@ -40,9 +46,11 @@ export function useConversations() {
       if (!response.ok) throw new Error('Failed to delete conversation')
       setConversations((prev) => prev.filter((c) => c.id !== id))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      setError(errorMessage)
+      options.onError?.(errorMessage)
     }
-  }, [])
+  }, [options])
 
   const addConversation = useCallback((conversation: Conversation) => {
     setConversations((prev) => [conversation, ...prev])
