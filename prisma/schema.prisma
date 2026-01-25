@@ -1,18 +1,156 @@
+// ============================================================================
+// Talk With Legends - Production Database Schema
+// ============================================================================
+// Version: 2.0.0
+// Last Updated: 2026-01-25
+//
+// Design Principles:
+// - Comprehensive enum types for type safety
+// - Soft delete support (deletedAt) for data recovery
+// - Audit fields on all tables (createdAt, updatedAt)
+// - JSONB metadata for extensibility without schema changes
+// - Optimized indexes for common query patterns
+// - pgvector support for RAG/semantic search
+// ============================================================================
+
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector, pgcrypto]
 }
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+// 데이터 소스 유형 (Tier 1 + Tier 2)
+enum SourceType {
+  // === Tier 1: Core Sources ===
+  YOUTUBE_VIDEO           // 개별 YouTube 영상
+  YOUTUBE_CHANNEL         // YouTube 채널 전체
+  YOUTUBE_PLAYLIST        // YouTube 재생목록
+  TWITTER_PROFILE         // Twitter/X 프로필
+  TWITTER_SEARCH          // Twitter 검색 쿼리
+  BLOG                    // 개인 블로그
+  BLOG_RSS                // RSS 피드
+  NEWS_SEARCH             // 뉴스 검색
+  SHAREHOLDER_LETTER      // 주주서한
+  SEC_FILING              // SEC 공시 (10-K, 8-K 등)
+  BOOK                    // 책/자서전
+
+  // === Tier 2: Important Sources ===
+  PODCAST_EPISODE         // 팟캐스트 에피소드
+  PODCAST_SHOW            // 팟캐스트 시리즈
+  EARNINGS_CALL           // 실적 발표 콜
+  CONFERENCE_TALK         // 컨퍼런스 강연
+  REDDIT_AMA              // Reddit AMA
+  REDDIT_COMMENT          // Reddit 댓글
+
+  // === Tier 3: Supplementary ===
+  LINKEDIN_PROFILE        // LinkedIn 프로필
+  LINKEDIN_POST           // LinkedIn 게시물
+  FACEBOOK_POST           // Facebook 게시물
+  MEDIUM_ARTICLE          // Medium 글
+  SUBSTACK_POST           // Substack 뉴스레터
+  HACKER_NEWS             // Hacker News 댓글
+  QUORA_ANSWER            // Quora 답변
+  ACADEMIC_PAPER          // 학술 논문
+  PATENT                  // 특허
+  COURT_DOCUMENT          // 법원 문서
+  CONGRESSIONAL_TESTIMONY // 의회 증언
+  INTERVIEW_TRANSCRIPT    // 인터뷰 (수동 업로드)
+  SPEECH_TRANSCRIPT       // 연설문
+  DOCUMENTARY             // 다큐멘터리
+  CUSTOM                  // 기타
+}
+
+// 소스 상태
+enum SourceStatus {
+  PENDING     // 대기 중 (설정 완료, 수집 전)
+  ACTIVE      // 활성 (정기 수집 중)
+  PAUSED      // 일시 중지
+  FAILED      // 실패 (재시도 필요)
+  EXHAUSTED   // 완료 (더 이상 수집할 데이터 없음)
+  ARCHIVED    // 보관 (비활성화)
+}
+
+// 문서 처리 상태
+enum DocumentStatus {
+  PENDING_FETCH       // 수집 대기
+  FETCHING            // 수집 중
+  FETCH_FAILED        // 수집 실패
+  PENDING_PROCESSING  // 처리 대기
+  PROCESSING          // 처리 중
+  PROCESSED           // 처리 완료 (청킹 완료)
+  PENDING_EMBEDDING   // 임베딩 대기
+  EMBEDDING           // 임베딩 중
+  READY               // 사용 가능
+  FAILED              // 처리 실패
+  ARCHIVED            // 보관됨
+}
+
+// 청크 유형
+enum ChunkType {
+  PARAGRAPH       // 일반 단락
+  QUOTE           // 인용문
+  QA_PAIR         // Q&A (Reddit AMA 등)
+  DIALOGUE        // 대화 (인터뷰)
+  BULLET_POINTS   // 글머리 기호 목록
+  CODE            // 코드 블록
+  HEADER          // 제목/헤더
+  SUMMARY         // 요약
+}
+
+// 특성 카테고리
+enum CharacteristicCategory {
+  OPINION         // 의견/견해
+  BELIEF          // 신념/가치관
+  STYLE           // 말투/스타일
+  CATCHPHRASE     // 자주 쓰는 표현
+  ANECDOTE        // 일화/스토리
+  FACT            // 사실/이력
+  PREDICTION      // 예측/전망
+  ADVICE          // 조언
+  PRINCIPLE       // 원칙/철학
+  HUMOR           // 유머 스타일
+}
+
+// 언어
+enum Language {
+  EN    // English
+  KO    // Korean
+  JA    // Japanese
+  ZH    // Chinese
+  ES    // Spanish
+  FR    // French
+  DE    // German
+  OTHER // 기타
+}
+
+// 페르소나 공개 상태
+enum PersonaVisibility {
+  DRAFT       // 초안 (비공개)
+  INTERNAL    // 내부 테스트
+  BETA        // 베타 (일부 공개)
+  PUBLIC      // 전체 공개
+  ARCHIVED    // 보관됨
+}
+
+// ============================================================================
+// AUTHENTICATION & USER (NextAuth 호환)
+// ============================================================================
 
 model Account {
   id                String  @id @default(cuid())
-  userId            String
+  userId            String  @map("user_id")
   type              String
   provider          String
-  providerAccountId String
+  providerAccountId String  @map("provider_account_id")
   refresh_token     String? @db.Text
   access_token      String? @db.Text
   expires_at        Int?
@@ -24,27 +162,44 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
 }
 
 model Session {
   id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime? @map("email_verified")
   name          String?
   image         String?
-  emailVerified DateTime?
+  role          String    @default("user") // user, admin, moderator
+
+  // Relations
   accounts      Account[]
   sessions      Session[]
   conversations Conversation[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  feedbacks     ConversationFeedback[]
+
+  // Timestamps
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
 }
 
 model VerificationToken {
@@ -53,40 +208,669 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+  @@map("verification_tokens")
 }
 
-model Conversation {
-  id        String    @id @default(cuid())
-  title     String?
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages  Message[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+// ============================================================================
+// PERSONA (인물)
+// ============================================================================
 
-  @@index([userId])
+model Persona {
+  id          String            @id @default(cuid())
+  slug        String            @unique // URL-friendly: "elon-musk"
+
+  // 기본 정보
+  name        String            // "Elon Musk"
+  nameKo      String?           @map("name_ko") // "일론 머스크"
+  nameLocal   String?           @map("name_local") // 현지어 이름
+  title       String?           // "CEO of Tesla & SpaceX"
+  bio         String?           @db.Text
+  bioShort    String?           @map("bio_short") @db.VarChar(280) // 트위터 길이
+
+  // 프로필 이미지
+  imageUrl    String?           @map("image_url")
+  sketchUrl   String?           @map("sketch_url") // 스케치 이미지
+  thumbnailUrl String?          @map("thumbnail_url")
+
+  // UI 관련
+  color       String?           // 그라데이션: "from-blue-400 to-cyan-500"
+  accentColor String?           @map("accent_color") // 강조색: "#3B82F6"
+
+  // 메타데이터
+  birthDate   DateTime?         @map("birth_date")
+  nationality String?
+  occupation  String[]          // ["CEO", "Engineer", "Investor"]
+  companies   String[]          // ["Tesla", "SpaceX", "Neuralink"]
+  industries  String[]          // ["Automotive", "Aerospace", "AI"]
+
+  // 소셜 링크 (검증용)
+  twitterHandle   String?       @map("twitter_handle") // "@elonmusk"
+  linkedinUrl     String?       @map("linkedin_url")
+  wikipediaUrl    String?       @map("wikipedia_url")
+  officialWebsite String?       @map("official_website")
+
+  // AI 페르소나 설정
+  speakingStyle   Json?         @map("speaking_style")
+  // {
+  //   "formality": "casual" | "formal" | "mixed",
+  //   "verbosity": "concise" | "moderate" | "verbose",
+  //   "humor": "dry" | "playful" | "serious" | "sarcastic",
+  //   "technicality": "expert" | "general" | "beginner",
+  //   "emojiUsage": "none" | "minimal" | "moderate" | "frequent",
+  //   "languagePatterns": ["first principles", "order of magnitude"]
+  // }
+
+  keyPhrases      String[]      @map("key_phrases") // 자주 쓰는 표현
+  values          String[]      // 핵심 가치관
+  expertise       String[]      // 전문 분야
+  controversies   String[]      // 논란 주제 (주의 필요)
+
+  // 생성된 시스템 프롬프트 (캐시)
+  systemPromptBase    String?   @map("system_prompt_base") @db.Text
+  systemPromptVersion Int       @default(0) @map("system_prompt_version")
+  systemPromptUpdatedAt DateTime? @map("system_prompt_updated_at")
+
+  // 상태
+  visibility  PersonaVisibility @default(DRAFT)
+  isActive    Boolean           @default(true) @map("is_active")
+  priority    Int               @default(0) // 정렬 순서
+
+  // 통계 (비정규화, 주기적 갱신)
+  totalDocuments  Int           @default(0) @map("total_documents")
+  totalChunks     Int           @default(0) @map("total_chunks")
+  totalWords      Int           @default(0) @map("total_words")
+  totalConversations Int        @default(0) @map("total_conversations")
+  avgRating       Float?        @map("avg_rating")
+
+  // 확장 메타데이터
+  metadata    Json?             // 추가 필드용 JSONB
+
+  // Relations
+  sources         Source[]
+  documents       Document[]
+  characteristics PersonaCharacteristic[]
+  conversations   Conversation[]
+  topics          PersonaTopic[]
+  aliases         PersonaAlias[]
+
+  // Timestamps
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  deletedAt   DateTime?         @map("deleted_at")
+
+  @@index([slug])
+  @@index([visibility, isActive])
+  @@index([priority])
+  @@map("personas")
+}
+
+// 페르소나 별명/대체 이름
+model PersonaAlias {
+  id        String   @id @default(cuid())
+  personaId String   @map("persona_id")
+  alias     String   // "Iron Man", "Technoking"
+  language  Language @default(EN)
+  isPrimary Boolean  @default(false) @map("is_primary")
+
+  persona   Persona  @relation(fields: [personaId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([personaId, alias])
+  @@index([alias])
+  @@map("persona_aliases")
+}
+
+// 페르소나 관련 주제
+model PersonaTopic {
+  id          String  @id @default(cuid())
+  personaId   String  @map("persona_id")
+  topic       String  // "AI", "Electric Vehicles", "Mars Colonization"
+  sentiment   String? // "positive", "negative", "neutral", "mixed"
+  confidence  Float   @default(0.5) // 0-1
+  documentCount Int   @default(0) @map("document_count")
+
+  persona     Persona @relation(fields: [personaId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([personaId, topic])
+  @@index([personaId])
+  @@index([topic])
+  @@map("persona_topics")
+}
+
+// ============================================================================
+// DATA SOURCE (수집 소스)
+// ============================================================================
+
+model Source {
+  id          String       @id @default(cuid())
+  personaId   String       @map("persona_id")
+
+  // 소스 정보
+  type        SourceType
+  name        String       // 표시용 이름: "Lex Fridman Podcast"
+  description String?      @db.Text
+  url         String?      // 기본 URL
+
+  // 소스별 설정 (JSONB - 유연성)
+  config      Json?
+  // YouTube: { channelId, playlistId, videoIds[], searchQuery }
+  // Twitter: { username, searchQuery, includeReplies, includeRetweets }
+  // Blog: { feedUrl, selectors: { title, content, date } }
+  // Podcast: { showId, platform: "spotify" | "apple" | "youtube" }
+  // Earnings: { ticker, company, ceoName }
+  // etc.
+
+  // 인증 정보 (암호화된 참조)
+  credentialRef String?    @map("credential_ref") // 별도 시크릿 저장소 참조
+
+  // 상태
+  status      SourceStatus @default(PENDING)
+  priority    Int          @default(0) // 높을수록 먼저 수집
+  isBackfillComplete Boolean @default(false) @map("is_backfill_complete")
+
+  // 스케줄링
+  fetchFrequency  String?  @map("fetch_frequency") // "hourly", "daily", "weekly", "monthly", "once"
+  fetchCronExpr   String?  @map("fetch_cron_expr") // "0 2 * * *" (정밀 스케줄)
+  lastFetchedAt   DateTime? @map("last_fetched_at")
+  nextFetchAt     DateTime? @map("next_fetch_at")
+
+  // 수집 제한
+  maxItemsPerFetch  Int?   @map("max_items_per_fetch")
+  totalItemsLimit   Int?   @map("total_items_limit")
+  startDate         DateTime? @map("start_date") // 이 날짜 이후만 수집
+  endDate           DateTime? @map("end_date")   // 이 날짜 이전만 수집
+
+  // 통계
+  totalFetches    Int      @default(0) @map("total_fetches")
+  successFetches  Int      @default(0) @map("success_fetches")
+  failedFetches   Int      @default(0) @map("failed_fetches")
+  totalDocuments  Int      @default(0) @map("total_documents")
+
+  // 에러 추적
+  lastError       String?  @map("last_error") @db.Text
+  lastErrorAt     DateTime? @map("last_error_at")
+  consecutiveFailures Int  @default(0) @map("consecutive_failures")
+
+  // 메타데이터
+  metadata    Json?
+
+  // Relations
+  persona     Persona     @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  documents   Document[]
+  fetchLogs   FetchLog[]
+
+  // Timestamps
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  deletedAt   DateTime?   @map("deleted_at")
+
+  @@index([personaId, status])
+  @@index([type, status])
+  @@index([nextFetchAt])
+  @@index([status, priority])
+  @@map("sources")
+}
+
+// 수집 로그
+model FetchLog {
+  id          String   @id @default(cuid())
+  sourceId    String   @map("source_id")
+
+  // 결과
+  status      String   // "success", "partial", "failed", "skipped"
+
+  // 통계
+  itemsFound      Int  @default(0) @map("items_found")
+  itemsNew        Int  @default(0) @map("items_new")
+  itemsUpdated    Int  @default(0) @map("items_updated")
+  itemsSkipped    Int  @default(0) @map("items_skipped")
+  itemsFailed     Int  @default(0) @map("items_failed")
+
+  // 성능
+  durationMs      Int? @map("duration_ms")
+  bytesProcessed  Int? @map("bytes_processed")
+
+  // 에러
+  errorMessage    String? @map("error_message") @db.Text
+  errorStack      String? @map("error_stack") @db.Text
+
+  // 디버깅용 상세 정보
+  metadata    Json?
+
+  // Relations
+  source      Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([sourceId, createdAt])
+  @@index([status, createdAt])
+  @@map("fetch_logs")
+}
+
+// ============================================================================
+// DOCUMENT (문서)
+// ============================================================================
+
+model Document {
+  id          String         @id @default(cuid())
+  personaId   String         @map("persona_id")
+  sourceId    String?        @map("source_id")
+
+  // 외부 식별자 (중복 방지)
+  externalId  String?        @map("external_id") // YouTube videoId, Tweet ID 등
+  externalUrl String?        @map("external_url") @db.Text
+
+  // 콘텐츠
+  title       String?
+  rawContent  String         @map("raw_content") @db.Text
+  cleanContent String?       @map("clean_content") @db.Text
+  summary     String?        @db.Text
+
+  // 메타데이터
+  author      String?        // 원본 저자
+  authorRole  String?        @map("author_role") // "host", "guest", "interviewer"
+  publishedAt DateTime?      @map("published_at")
+  language    Language       @default(EN)
+
+  // 콘텐츠 분석
+  wordCount       Int?       @map("word_count")
+  charCount       Int?       @map("char_count")
+  sentenceCount   Int?       @map("sentence_count")
+  readingTimeMin  Int?       @map("reading_time_min")
+
+  // 미디어 정보 (영상/오디오)
+  durationSeconds Int?       @map("duration_seconds")
+  hasTranscript   Boolean    @default(false) @map("has_transcript")
+  transcriptSource String?   @map("transcript_source") // "youtube", "whisper", "manual"
+
+  // 처리 상태
+  status      DocumentStatus @default(PENDING_FETCH)
+
+  // 처리 통계
+  chunkCount      Int        @default(0) @map("chunk_count")
+  embeddedChunks  Int        @default(0) @map("embedded_chunks")
+  extractedChars  Int        @default(0) @map("extracted_chars")
+
+  // 품질 점수 (0-1)
+  qualityScore    Float?     @map("quality_score")
+  relevanceScore  Float?     @map("relevance_score") // 페르소나와의 관련성
+
+  // 에러 추적
+  lastError       String?    @map("last_error") @db.Text
+  lastErrorAt     DateTime?  @map("last_error_at")
+  retryCount      Int        @default(0) @map("retry_count")
+
+  // 원본 메타데이터 (소스별 상이)
+  sourceMetadata  Json?      @map("source_metadata")
+  // YouTube: { viewCount, likeCount, commentCount, tags[], thumbnailUrl }
+  // Twitter: { retweetCount, likeCount, replyCount, isRetweet, quotedTweetId }
+  // Podcast: { episodeNumber, showName, guests[] }
+  // etc.
+
+  // Relations
+  persona     Persona        @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  source      Source?        @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  chunks      Chunk[]
+  characteristics DocumentCharacteristic[]
+
+  // Timestamps
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  processedAt DateTime?      @map("processed_at")
+  deletedAt   DateTime?      @map("deleted_at")
+
+  @@unique([sourceId, externalId])
+  @@index([personaId, status])
+  @@index([sourceId, status])
+  @@index([status, createdAt])
+  @@index([publishedAt])
+  @@index([externalId])
+  @@map("documents")
+}
+
+// ============================================================================
+// CHUNK (청크 - 벡터 검색 단위)
+// ============================================================================
+
+model Chunk {
+  id          String    @id @default(cuid())
+  documentId  String    @map("document_id")
+
+  // 콘텐츠
+  content     String    @db.Text
+  contentHash String    @map("content_hash") @db.VarChar(64) // SHA-256 (중복 방지)
+
+  // 위치 정보
+  index       Int       // 문서 내 순서 (0-based)
+  startChar   Int?      @map("start_char") // 원본에서의 시작 위치
+  endChar     Int?      @map("end_char")
+
+  // 청크 메타데이터
+  type        ChunkType @default(PARAGRAPH)
+  wordCount   Int?      @map("word_count")
+
+  // 컨텍스트 (인접 청크 참조)
+  prevChunkId String?   @map("prev_chunk_id")
+  nextChunkId String?   @map("next_chunk_id")
+
+  // 벡터 임베딩 (pgvector)
+  embedding           Unsupported("vector(1536)")?
+  embeddingModel      String?   @map("embedding_model") @db.VarChar(50) // "text-embedding-3-small"
+  embeddedAt          DateTime? @map("embedded_at")
+
+  // 추가 메타데이터
+  metadata    Json?
+  // {
+  //   "speaker": "Elon Musk",  // 대화에서 화자
+  //   "timestamp": "00:15:30", // 영상 타임스탬프
+  //   "topic": "AI Safety",    // 추출된 주제
+  //   "sentiment": 0.7,        // 감정 점수
+  //   "importance": 0.8        // 중요도 점수
+  // }
+
+  // Relations
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@unique([documentId, contentHash])
+  @@index([documentId, index])
+  @@index([type])
+  @@index([embeddedAt])
+  @@map("chunks")
+}
+
+// ============================================================================
+// CHARACTERISTICS (페르소나 특성)
+// ============================================================================
+
+// 페르소나 수준 특성 (집계된 특성)
+model PersonaCharacteristic {
+  id          String                  @id @default(cuid())
+  personaId   String                  @map("persona_id")
+
+  // 특성 정보
+  category    CharacteristicCategory
+  topic       String?                 // 관련 주제
+  content     String                  @db.Text
+
+  // 신뢰도
+  confidence  Float                   @default(0.5) // 0-1
+  occurrences Int                     @default(1)   // 발견 횟수
+
+  // 대표 인용문
+  exampleQuote String?                @map("example_quote") @db.Text
+
+  // 출처 추적
+  sourceDocumentIds String[]          @map("source_document_ids")
+
+  // 검증 상태
+  isVerified  Boolean                 @default(false) @map("is_verified")
+  verifiedBy  String?                 @map("verified_by") // 관리자 ID
+  verifiedAt  DateTime?               @map("verified_at")
+
+  // 메타데이터
+  metadata    Json?
+
+  // Relations
+  persona     Persona                 @relation(fields: [personaId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt   DateTime                @default(now()) @map("created_at")
+  updatedAt   DateTime                @updatedAt @map("updated_at")
+
+  @@index([personaId, category])
+  @@index([personaId, confidence])
+  @@index([topic])
+  @@map("persona_characteristics")
+}
+
+// 문서 수준 특성 (원본 추출)
+model DocumentCharacteristic {
+  id          String                  @id @default(cuid())
+  documentId  String                  @map("document_id")
+
+  // 특성 정보
+  category    CharacteristicCategory
+  topic       String?
+  content     String                  @db.Text
+
+  // 추출 정보
+  confidence  Float                   @default(0.5)
+  quote       String?                 @db.Text // 원문 인용
+  quoteStart  Int?                    @map("quote_start")
+  quoteEnd    Int?                    @map("quote_end")
+
+  // 추출 모델 정보
+  extractedBy String?                 @map("extracted_by") // "claude-3-sonnet", "gpt-4"
+  extractedAt DateTime?               @map("extracted_at")
+
+  // Relations
+  document    Document                @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt   DateTime                @default(now()) @map("created_at")
+
+  @@index([documentId, category])
+  @@map("document_characteristics")
+}
+
+// ============================================================================
+// CONVERSATION (대화)
+// ============================================================================
+
+model Conversation {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  personaId   String?   @map("persona_id")
+
+  // 대화 정보
+  title       String?
+
+  // 사용된 시스템 프롬프트 버전 (재현성)
+  promptVersion Int?    @map("prompt_version")
+
+  // 통계
+  messageCount  Int     @default(0) @map("message_count")
+  totalTokens   Int     @default(0) @map("total_tokens")
+
+  // 상태
+  isActive    Boolean   @default(true) @map("is_active")
+
+  // 메타데이터
+  metadata    Json?
+  // {
+  //   "userAgent": "...",
+  //   "platform": "web" | "mobile",
+  //   "sessionId": "..."
+  // }
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  persona     Persona?  @relation(fields: [personaId], references: [id], onDelete: SetNull)
+  messages    Message[]
+  feedbacks   ConversationFeedback[]
+
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  @@index([userId, createdAt])
+  @@index([personaId, createdAt])
+  @@index([userId, personaId])
+  @@map("conversations")
 }
 
 model Message {
-  id             String       @id @default(cuid())
-  role           String       // "user" | "assistant"
-  content        String       @db.Text
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  attachments    Attachment[]
-  createdAt      DateTime     @default(now())
+  id              String    @id @default(cuid())
+  conversationId  String    @map("conversation_id")
 
-  @@index([conversationId])
+  // 메시지 정보
+  role            String    // "user" | "assistant" | "system"
+  content         String    @db.Text
+
+  // 토큰 사용량
+  inputTokens     Int?      @map("input_tokens")
+  outputTokens    Int?      @map("output_tokens")
+
+  // RAG 컨텍스트 (사용된 청크)
+  retrievedChunkIds String[] @map("retrieved_chunk_ids")
+  retrievalScores   Float[]  @map("retrieval_scores")
+
+  // 모델 정보
+  model           String?   @db.VarChar(50)
+
+  // 에러
+  errorMessage    String?   @map("error_message")
+
+  // 첨부파일
+  attachments     MessageAttachment[]
+
+  // Relations
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
 }
 
-model Attachment {
-  id        String   @id @default(cuid())
-  url       String
-  type      String   // "image" | "document"
-  name      String
-  messageId String
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+model MessageAttachment {
+  id          String   @id @default(cuid())
+  messageId   String   @map("message_id")
+
+  type        String   // "image", "document", "audio"
+  url         String
+  name        String?
+  mimeType    String?  @map("mime_type")
+  sizeBytes   Int?     @map("size_bytes")
+
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now()) @map("created_at")
 
   @@index([messageId])
+  @@map("message_attachments")
+}
+
+// 대화 피드백
+model ConversationFeedback {
+  id              String   @id @default(cuid())
+  conversationId  String   @map("conversation_id")
+  userId          String   @map("user_id")
+
+  // 평가
+  rating          Int?     // 1-5
+  thumbsUp        Boolean? @map("thumbs_up")
+
+  // 상세 피드백
+  feedbackType    String?  @map("feedback_type") // "accuracy", "style", "helpfulness", "other"
+  comment         String?  @db.Text
+
+  // 특정 메시지에 대한 피드백
+  messageId       String?  @map("message_id")
+
+  // Relations
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([conversationId])
+  @@index([userId])
+  @@map("conversation_feedbacks")
+}
+
+// ============================================================================
+// SYSTEM & ADMIN
+// ============================================================================
+
+// 시스템 설정
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+
+  updatedBy   String?  @map("updated_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_configs")
+}
+
+// 작업 큐 (백그라운드 작업)
+model JobQueue {
+  id          String   @id @default(cuid())
+
+  type        String   // "fetch", "process", "embed", "extract"
+  status      String   @default("pending") // "pending", "running", "completed", "failed"
+  priority    Int      @default(0)
+
+  // 작업 대상
+  targetType  String?  @map("target_type") // "source", "document", "chunk"
+  targetId    String?  @map("target_id")
+
+  // 입력/출력
+  input       Json?
+  output      Json?
+
+  // 실행 정보
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+
+  // 에러
+  errorMessage String?  @map("error_message") @db.Text
+  retryCount   Int      @default(0) @map("retry_count")
+  maxRetries   Int      @default(3) @map("max_retries")
+
+  // 스케줄
+  scheduledFor DateTime? @map("scheduled_for")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([status, priority])
+  @@index([type, status])
+  @@index([scheduledFor])
+  @@index([targetType, targetId])
+  @@map("job_queue")
+}
+
+// 감사 로그
+model AuditLog {
+  id          String   @id @default(cuid())
+
+  // 액션 정보
+  action      String   // "create", "update", "delete", "fetch", "process"
+  entityType  String   @map("entity_type") // "persona", "source", "document"
+  entityId    String   @map("entity_id")
+
+  // 변경 내용
+  oldValue    Json?    @map("old_value")
+  newValue    Json?    @map("new_value")
+
+  // 실행자
+  userId      String?  @map("user_id")
+  userEmail   String?  @map("user_email")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+
+  // 메타데이터
+  metadata    Json?
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([action, createdAt])
+  @@index([userId, createdAt])
+  @@map("audit_logs")
 }

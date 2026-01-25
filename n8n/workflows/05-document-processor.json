@@ -1,0 +1,159 @@
+{
+  "name": "05 - Document Processor (Chunking)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT d.id, d.persona_id, d.raw_content, d.title, p.slug as persona_slug\nFROM documents d\nJOIN personas p ON d.persona_id = p.id\nWHERE d.status = 'PENDING_PROCESSING'\nAND d.deleted_at IS NULL\nORDER BY d.created_at ASC\nLIMIT 10"
+      },
+      "name": "Get Pending Documents",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE documents SET status = 'PROCESSING', updated_at = NOW() WHERE id = '{{ $json.id }}'"
+      },
+      "name": "Mark as Processing",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [650, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const doc = $input.first().json;\nconst text = doc.raw_content || '';\n\n// Configuration\nconst CHUNK_SIZE = 1000;      // Target characters per chunk\nconst CHUNK_OVERLAP = 200;    // Overlap between chunks\nconst MIN_CHUNK_SIZE = 100;   // Minimum chunk size\n\n// Clean text\nlet cleanText = text\n  .replace(/\\s+/g, ' ')           // Normalize whitespace\n  .replace(/[\\x00-\\x1F]+/g, ' ')  // Remove control chars\n  .trim();\n\n// Split into sentences (rough)\nconst sentences = cleanText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [cleanText];\n\nconst chunks = [];\nlet currentChunk = '';\nlet currentStart = 0;\nlet charIndex = 0;\n\nfor (let i = 0; i < sentences.length; i++) {\n  const sentence = sentences[i].trim();\n  \n  if (currentChunk.length + sentence.length > CHUNK_SIZE && currentChunk.length >= MIN_CHUNK_SIZE) {\n    // Save current chunk\n    chunks.push({\n      content: currentChunk.trim(),\n      start_char: currentStart,\n      end_char: charIndex,\n      index: chunks.length\n    });\n    \n    // Start new chunk with overlap\n    const overlapStart = currentChunk.lastIndexOf(' ', currentChunk.length - CHUNK_OVERLAP);\n    if (overlapStart > 0) {\n      currentChunk = currentChunk.substring(overlapStart + 1) + ' ' + sentence;\n      currentStart = charIndex - (currentChunk.length - sentence.length - 1);\n    } else {\n      currentChunk = sentence;\n      currentStart = charIndex;\n    }\n  } else {\n    currentChunk = currentChunk ? currentChunk + ' ' + sentence : sentence;\n  }\n  \n  charIndex += sentence.length + 1;\n}\n\n// Add final chunk\nif (currentChunk.trim().length >= MIN_CHUNK_SIZE) {\n  chunks.push({\n    content: currentChunk.trim(),\n    start_char: currentStart,\n    end_char: charIndex,\n    index: chunks.length\n  });\n}\n\n// Create hash for each chunk\nconst crypto = require('crypto');\nconst results = chunks.map(chunk => ({\n  json: {\n    document_id: doc.id,\n    persona_id: doc.persona_id,\n    content: chunk.content,\n    content_hash: crypto.createHash('sha256').update(chunk.content).digest('hex').substring(0, 64),\n    index: chunk.index,\n    start_char: chunk.start_char,\n    end_char: chunk.end_char,\n    type: 'PARAGRAPH',\n    word_count: chunk.content.split(/\\s+/).length\n  }\n}));\n\nreturn results;"
+      },
+      "name": "Chunk Document",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO chunks (\n  id, document_id, content, content_hash, index,\n  start_char, end_char, type, word_count, created_at\n) VALUES (\n  gen_random_uuid(),\n  '{{ $json.document_id }}',\n  '{{ $json.content.replace(/'/g, \"''\").substring(0, 10000) }}',\n  '{{ $json.content_hash }}',\n  {{ $json.index }},\n  {{ $json.start_char }},\n  {{ $json.end_char }},\n  '{{ $json.type }}',\n  {{ $json.word_count }},\n  NOW()\n)\nON CONFLICT (content_hash) DO NOTHING\nRETURNING id"
+      },
+      "name": "Save Chunks",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1050, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE documents\nSET \n  status = 'PENDING_EMBEDDING',\n  chunk_count = (SELECT COUNT(*) FROM chunks WHERE document_id = '{{ $('Get Pending Documents').first().json.id }}'),\n  clean_content = LEFT(raw_content, 50000),\n  processed_at = NOW(),\n  updated_at = NOW()\nWHERE id = '{{ $('Get Pending Documents').first().json.id }}'"
+      },
+      "name": "Update Document Status",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Documents": {
+      "main": [
+        [
+          {
+            "node": "Mark as Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Processing": {
+      "main": [
+        [
+          {
+            "node": "Chunk Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk Document": {
+      "main": [
+        [
+          {
+            "node": "Save Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Chunks": {
+      "main": [
+        [
+          {
+            "node": "Update Document Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "processor"
+    }
+  ]
+}
