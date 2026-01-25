@@ -1,0 +1,163 @@
+{
+  "name": "02 - Blog Collector (RSS)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  s.id as source_id, \n  s.persona_id, \n  s.url, \n  s.config->>'rssUrl' as rss_url,\n  p.slug as persona_slug, \n  p.name as persona_name\nFROM sources s\nJOIN personas p ON s.persona_id = p.id\nWHERE s.type = 'BLOG'\nAND s.status = 'ACTIVE'\nAND s.config->>'rssUrl' IS NOT NULL\nAND (s.next_fetch_at IS NULL OR s.next_fetch_at <= NOW())\nORDER BY s.priority DESC\nLIMIT 10"
+      },
+      "name": "Get Blog Sources",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.rss_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "Fetch RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst sources = $('Get Blog Sources').all();\nconst results = [];\n\nfor (let i = 0; i < allItems.length; i++) {\n  const response = allItems[i].json;\n  const sourceInfo = sources[i].json;\n  const xml = response.data || response.body || '';\n  \n  // Parse RSS items\n  const itemMatches = xml.match(/<item>[\\s\\S]*?<\\/item>/gi) || [];\n  \n  for (const itemXml of itemMatches.slice(0, 20)) {\n    try {\n      // Title\n      let title = '';\n      const titleMatch = itemXml.match(/<title><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/title>/i) ||\n                         itemXml.match(/<title>([^<]+)<\\/title>/i);\n      title = titleMatch ? titleMatch[1].trim() : 'Untitled';\n      \n      // Link\n      let link = '';\n      const linkMatch = itemXml.match(/<link>([^<]+)<\\/link>/i) ||\n                        itemXml.match(/<link[^>]*href=[\"']([^\"']+)[\"']/i) ||\n                        itemXml.match(/<guid[^>]*>([^<]+)<\\/guid>/i);\n      link = linkMatch ? linkMatch[1].trim() : '';\n      \n      // Date\n      const dateMatch = itemXml.match(/<pubDate>([^<]+)<\\/pubDate>/i) ||\n                        itemXml.match(/<dc:date>([^<]+)<\\/dc:date>/i);\n      let pubDate = null;\n      if (dateMatch) {\n        try {\n          pubDate = new Date(dateMatch[1]).toISOString();\n        } catch (e) {}\n      }\n      \n      // Content\n      let content = '';\n      const contentMatch = itemXml.match(/<content:encoded><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/content:encoded>/i) ||\n                           itemXml.match(/<description><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/description>/i) ||\n                           itemXml.match(/<description>([\\s\\S]*?)<\\/description>/i);\n      content = contentMatch ? contentMatch[1] : '';\n      \n      // Clean content\n      const cleanContent = content\n        .replace(/<[^>]+>/g, ' ')\n        .replace(/&nbsp;/g, ' ')\n        .replace(/&amp;/g, '&')\n        .replace(/&lt;/g, '<')\n        .replace(/&gt;/g, '>')\n        .replace(/&quot;/g, '\"')\n        .replace(/&#39;/g, \"'\")\n        .replace(/\\s+/g, ' ')\n        .trim();\n      \n      if (!link || cleanContent.length < 50) continue;\n      \n      // Generate external_id\n      const urlParts = link.replace(/\\/$/, '').split('/');\n      const externalId = (urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2] || Date.now().toString())\n        .replace(/[^a-zA-Z0-9-_]/g, '_')\n        .substring(0, 200);\n      \n      results.push({\n        json: {\n          external_id: externalId,\n          external_url: link,\n          title: title.substring(0, 500),\n          raw_content: cleanContent.substring(0, 100000),\n          published_at: pubDate,\n          language: 'EN',\n          word_count: cleanContent.split(/\\s+/).length,\n          persona_id: sourceInfo.persona_id,\n          source_id: sourceInfo.source_id,\n          persona_name: sourceInfo.persona_name\n        }\n      });\n    } catch (e) {}\n  }\n}\n\nreturn results;"
+      },
+      "name": "Parse All RSS",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO documents (\n  id, persona_id, source_id, external_id, external_url,\n  title, raw_content, published_at, language,\n  word_count, status, created_at, updated_at\n) VALUES (\n  gen_random_uuid(),\n  '{{ $json.persona_id }}',\n  '{{ $json.source_id }}',\n  '{{ $json.external_id.replace(/'/g, \"''\") }}',\n  '{{ $json.external_url.replace(/'/g, \"''\") }}',\n  '{{ $json.title.replace(/'/g, \"''\") }}',\n  '{{ $json.raw_content.replace(/'/g, \"''\") }}',\n  {{ $json.published_at ? \"'\" + $json.published_at + \"'\" : \"NULL\" }},\n  '{{ $json.language }}',\n  {{ $json.word_count }},\n  'PENDING_PROCESSING',\n  NOW(),\n  NOW()\n)\nON CONFLICT (source_id, external_id) DO UPDATE SET\n  title = EXCLUDED.title,\n  raw_content = EXCLUDED.raw_content,\n  updated_at = NOW()\nRETURNING id"
+      },
+      "name": "Save Documents",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1050, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE sources\nSET \n  last_fetched_at = NOW(),\n  next_fetch_at = NOW() + INTERVAL '12 hours',\n  total_fetches = total_fetches + 1,\n  success_fetches = success_fetches + 1,\n  updated_at = NOW()\nWHERE type = 'BLOG' AND status = 'ACTIVE'"
+      },
+      "name": "Update All Sources",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Blog Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Blog Sources": {
+      "main": [
+        [
+          {
+            "node": "Fetch RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch RSS": {
+      "main": [
+        [
+          {
+            "node": "Parse All RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse All RSS": {
+      "main": [
+        [
+          {
+            "node": "Save Documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Documents": {
+      "main": [
+        [
+          {
+            "node": "Update All Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "collector"
+    },
+    {
+      "name": "blog"
+    }
+  ]
+}

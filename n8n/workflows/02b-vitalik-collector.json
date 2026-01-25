@@ -1,0 +1,211 @@
+{
+  "name": "02b - Vitalik Blog Collector",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  s.id as source_id, \n  s.persona_id, \n  s.url,\n  p.slug as persona_slug, \n  p.name as persona_name\nFROM sources s\nJOIN personas p ON s.persona_id = p.id\nWHERE s.type = 'BLOG'\nAND s.url LIKE '%vitalik%'\nAND s.status = 'ACTIVE'\nLIMIT 1"
+      },
+      "name": "Get Vitalik Source",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://vitalik.eth.limo/feed.xml",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "Fetch Vitalik RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst xml = response.data || response.body || '';\nconst sourceInfo = $('Get Vitalik Source').first().json;\n\nconst links = [];\n\n// Extract links from RSS items\nconst itemMatches = xml.match(/<item>[\\s\\S]*?<\\/item>/gi) || [];\n\nfor (const itemXml of itemMatches.slice(0, 15)) {\n  // Title\n  const titleMatch = itemXml.match(/<title>([^<]+)<\\/title>/i);\n  const title = titleMatch ? titleMatch[1].trim() : 'Untitled';\n  \n  // Link\n  const linkMatch = itemXml.match(/<link>([^<]+)<\\/link>/i);\n  let link = linkMatch ? linkMatch[1].trim() : '';\n  \n  // vitalik.ca -> vitalik.eth.limo 변환\n  link = link.replace('vitalik.ca', 'vitalik.eth.limo');\n  \n  // Date\n  const dateMatch = itemXml.match(/<pubDate>([^<]+)<\\/pubDate>/i);\n  let pubDate = null;\n  if (dateMatch) {\n    try {\n      pubDate = new Date(dateMatch[1]).toISOString();\n    } catch (e) {}\n  }\n  \n  if (link && !link.includes('translations')) {\n    // Generate external_id from URL\n    const urlParts = link.replace(/\\.html$/, '').split('/');\n    const externalId = urlParts[urlParts.length - 1] || Date.now().toString();\n    \n    links.push({\n      json: {\n        external_id: externalId.substring(0, 200),\n        external_url: link,\n        title: title,\n        published_at: pubDate,\n        persona_id: sourceInfo.persona_id,\n        source_id: sourceInfo.source_id\n      }\n    });\n  }\n}\n\nreturn links;"
+      },
+      "name": "Extract Links",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.external_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "Fetch Article",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allResponses = $input.all();\nconst allLinks = $('Extract Links').all();\nconst results = [];\n\nfor (let i = 0; i < allResponses.length; i++) {\n  const html = allResponses[i].json.data || allResponses[i].json.body || '';\n  const linkInfo = allLinks[i].json;\n  \n  // Extract article content\n  let content = '';\n  \n  // Try to find main content area\n  const articleMatch = html.match(/<article[^>]*>([\\s\\S]*?)<\\/article>/i) ||\n                       html.match(/<div[^>]*class=[\"'][^\"']*content[^\"']*[\"'][^>]*>([\\s\\S]*?)<\\/div>/i) ||\n                       html.match(/<main[^>]*>([\\s\\S]*?)<\\/main>/i);\n  \n  if (articleMatch) {\n    content = articleMatch[1];\n  } else {\n    // Fallback: get body\n    const bodyMatch = html.match(/<body[^>]*>([\\s\\S]*?)<\\/body>/i);\n    content = bodyMatch ? bodyMatch[1] : html;\n  }\n  \n  // Clean HTML\n  const cleanContent = content\n    .replace(/<script[^>]*>[\\s\\S]*?<\\/script>/gi, '')\n    .replace(/<style[^>]*>[\\s\\S]*?<\\/style>/gi, '')\n    .replace(/<nav[^>]*>[\\s\\S]*?<\\/nav>/gi, '')\n    .replace(/<header[^>]*>[\\s\\S]*?<\\/header>/gi, '')\n    .replace(/<footer[^>]*>[\\s\\S]*?<\\/footer>/gi, '')\n    .replace(/<aside[^>]*>[\\s\\S]*?<\\/aside>/gi, '')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>')\n    .replace(/&quot;/g, '\"')\n    .replace(/&#39;/g, \"'\")\n    .replace(/\\s+/g, ' ')\n    .trim();\n  \n  if (cleanContent.length > 200) {\n    results.push({\n      json: {\n        external_id: linkInfo.external_id,\n        external_url: linkInfo.external_url,\n        title: linkInfo.title,\n        raw_content: cleanContent.substring(0, 100000),\n        published_at: linkInfo.published_at,\n        language: 'EN',\n        word_count: cleanContent.split(/\\s+/).length,\n        persona_id: linkInfo.persona_id,\n        source_id: linkInfo.source_id\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "name": "Parse Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO documents (\n  id, persona_id, source_id, external_id, external_url,\n  title, raw_content, published_at, language,\n  word_count, status, created_at, updated_at\n) VALUES (\n  gen_random_uuid(),\n  '{{ $json.persona_id }}',\n  '{{ $json.source_id }}',\n  '{{ $json.external_id.replace(/'/g, \"''\") }}',\n  '{{ $json.external_url.replace(/'/g, \"''\") }}',\n  '{{ $json.title.replace(/'/g, \"''\") }}',\n  '{{ $json.raw_content.replace(/'/g, \"''\") }}',\n  {{ $json.published_at ? \"'\" + $json.published_at + \"'\" : \"NULL\" }},\n  '{{ $json.language }}',\n  {{ $json.word_count }},\n  'PENDING_PROCESSING',\n  NOW(),\n  NOW()\n)\nON CONFLICT (source_id, external_id) DO UPDATE SET\n  title = EXCLUDED.title,\n  raw_content = EXCLUDED.raw_content,\n  updated_at = NOW()\nRETURNING id"
+      },
+      "name": "Save Documents",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE sources\nSET \n  last_fetched_at = NOW(),\n  next_fetch_at = NOW() + INTERVAL '1 day',\n  total_fetches = total_fetches + 1,\n  success_fetches = success_fetches + 1,\n  updated_at = NOW()\nWHERE url LIKE '%vitalik%' AND type = 'BLOG'"
+      },
+      "name": "Update Source",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1650, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Vitalik Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Vitalik Source": {
+      "main": [
+        [
+          {
+            "node": "Fetch Vitalik RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Vitalik RSS": {
+      "main": [
+        [
+          {
+            "node": "Extract Links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Links": {
+      "main": [
+        [
+          {
+            "node": "Fetch Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Article": {
+      "main": [
+        [
+          {
+            "node": "Parse Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Articles": {
+      "main": [
+        [
+          {
+            "node": "Save Documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Documents": {
+      "main": [
+        [
+          {
+            "node": "Update Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "collector"
+    },
+    {
+      "name": "vitalik"
+    }
+  ]
+}
