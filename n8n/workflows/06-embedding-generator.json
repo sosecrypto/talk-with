@@ -1,0 +1,189 @@
+{
+  "name": "06 - Embedding Generator (OpenAI)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT c.id, c.content, c.document_id, d.persona_id\nFROM chunks c\nJOIN documents d ON c.document_id = d.id\nWHERE c.embedding IS NULL\nAND d.status IN ('PENDING_EMBEDDING', 'EMBEDDING')\nAND d.deleted_at IS NULL\nORDER BY d.created_at ASC\nLIMIT 20"
+      },
+      "name": "Get Chunks Without Embeddings",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 20,
+        "options": {}
+      },
+      "name": "Batch Chunks",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"text-embedding-3-small\",\n  \"input\": {{ JSON.stringify($input.all().map(item => item.json.content.substring(0, 8000))) }}\n}",
+        "options": {}
+      },
+      "name": "Generate Embeddings (OpenAI)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const chunks = $('Batch Chunks').all();\nconst embeddings = $input.first().json.data;\n\nconst results = [];\n\nfor (let i = 0; i < chunks.length; i++) {\n  if (embeddings[i]) {\n    results.push({\n      json: {\n        chunk_id: chunks[i].json.id,\n        document_id: chunks[i].json.document_id,\n        embedding: embeddings[i].embedding,\n        embedding_model: 'text-embedding-3-small'\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "name": "Match Embeddings to Chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE chunks\nSET \n  embedding = '{{ JSON.stringify($json.embedding) }}'::vector,\n  embedding_model = '{{ $json.embedding_model }}',\n  embedded_at = NOW()\nWHERE id = '{{ $json.chunk_id }}'"
+      },
+      "name": "Save Embeddings",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE documents d\nSET \n  status = CASE \n    WHEN (SELECT COUNT(*) FROM chunks c WHERE c.document_id = d.id AND c.embedding IS NULL) = 0 \n    THEN 'READY' \n    ELSE 'EMBEDDING' \n  END,\n  embedded_chunks = (SELECT COUNT(*) FROM chunks c WHERE c.document_id = d.id AND c.embedding IS NOT NULL),\n  updated_at = NOW()\nWHERE d.id = '{{ $json.document_id }}'"
+      },
+      "name": "Update Document Status",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Chunks Without Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Chunks Without Embeddings": {
+      "main": [
+        [
+          {
+            "node": "Batch Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch Chunks": {
+      "main": [
+        [
+          {
+            "node": "Generate Embeddings (OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Embeddings (OpenAI)": {
+      "main": [
+        [
+          {
+            "node": "Match Embeddings to Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Embeddings to Chunks": {
+      "main": [
+        [
+          {
+            "node": "Save Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Embeddings": {
+      "main": [
+        [
+          {
+            "node": "Update Document Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "embedding"
+    },
+    {
+      "name": "openai"
+    }
+  ]
+}
