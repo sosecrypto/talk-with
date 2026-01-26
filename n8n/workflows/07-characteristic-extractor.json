@@ -1,0 +1,302 @@
+{
+  "name": "07 - Characteristic Extractor (Claude)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT d.id as document_id, d.persona_id, d.clean_content, d.title,\n       p.name as persona_name, p.slug as persona_slug\nFROM documents d\nJOIN personas p ON d.persona_id = p.id\nWHERE d.status = 'READY'\nAND d.clean_content IS NOT NULL\nAND LENGTH(d.clean_content) > 500\nAND d.id NOT IN (\n  SELECT DISTINCT document_id FROM document_characteristics WHERE document_id IS NOT NULL\n)\nORDER BY d.created_at DESC\nLIMIT 5"
+      },
+      "name": "Get Unprocessed Documents",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.document_id }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "name": "Has Documents?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "Loop Over Documents",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-20250514\",\n  \"max_tokens\": 4096,\n  \"system\": \"You are an expert at analyzing text to extract personality characteristics, opinions, speaking patterns, and notable quotes from specific individuals. You must return ONLY valid JSON with no additional text or explanation.\",\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": \"Analyze the following text from/about {{ $json.persona_name }} and extract their characteristics.\\n\\nDocument Title: {{ $json.title }}\\n\\n---\\n{{ $json.clean_content.substring(0, 12000) }}\\n---\\n\\nExtract characteristics and return a JSON array with this exact structure:\\n[{\\n  \\\"category\\\": \\\"opinion\\\" | \\\"style\\\" | \\\"belief\\\" | \\\"catchphrase\\\" | \\\"anecdote\\\" | \\\"fact\\\" | \\\"prediction\\\" | \\\"advice\\\" | \\\"principle\\\" | \\\"humor\\\",\\n  \\\"topic\\\": \\\"optional topic area (e.g., AI, business, leadership)\\\",\\n  \\\"content\\\": \\\"the characteristic in 1-3 sentences\\\",\\n  \\\"confidence\\\": 0.5-1.0,\\n  \\\"quote\\\": \\\"original quote if available, otherwise null\\\"\\n}]\\n\\nExtract 5-15 meaningful characteristics. Focus on unique insights, opinions, and speaking patterns that define this person.\"\n  }]\n}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "name": "Claude Extract Characteristics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ANTHROPIC_CREDENTIAL_ID",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json;\nconst docInfo = $('Loop Over Documents').first().json;\n\nlet characteristics = [];\n\ntry {\n  // Extract text content from Claude response\n  const textContent = response.content?.[0]?.text || '';\n  \n  // Find JSON array in response\n  const jsonMatch = textContent.match(/\\[[\\s\\S]*\\]/);\n  if (jsonMatch) {\n    characteristics = JSON.parse(jsonMatch[0]);\n  }\n} catch (e) {\n  console.error('Failed to parse Claude response:', e);\n  return [];\n}\n\n// Transform to database format\nconst results = characteristics.map((char, idx) => ({\n  json: {\n    document_id: docInfo.document_id,\n    persona_id: docInfo.persona_id,\n    category: char.category?.toUpperCase() || 'OPINION',\n    topic: char.topic || null,\n    content: char.content,\n    confidence: Math.min(1, Math.max(0, char.confidence || 0.5)),\n    quote: char.quote || null,\n    extracted_by: 'claude-sonnet-4',\n    extracted_at: new Date().toISOString()\n  }\n}));\n\nreturn results;"
+      },
+      "name": "Parse Claude Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO document_characteristics (\n  id, document_id, category, topic, content, confidence, quote,\n  extracted_by, extracted_at, created_at\n) VALUES (\n  gen_random_uuid(),\n  '{{ $json.document_id }}',\n  '{{ $json.category }}',\n  {{ $json.topic ? \"'\" + $json.topic.replace(/'/g, \"''\") + \"'\" : \"NULL\" }},\n  '{{ $json.content.replace(/'/g, \"''\") }}',\n  {{ $json.confidence }},\n  {{ $json.quote ? \"'\" + $json.quote.replace(/'/g, \"''\").substring(0, 1000) + \"'\" : \"NULL\" }},\n  '{{ $json.extracted_by }}',\n  '{{ $json.extracted_at }}',\n  NOW()\n)\nON CONFLICT DO NOTHING\nRETURNING id"
+      },
+      "name": "Save Document Characteristics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1450, 200],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH doc_chars AS (\n  SELECT dc.persona_id, dc.category, dc.topic, dc.content, dc.confidence\n  FROM document_characteristics dc\n  WHERE dc.document_id = '{{ $('Loop Over Documents').first().json.document_id }}'\n)\nINSERT INTO persona_characteristics (\n  id, persona_id, category, topic, content, confidence, occurrences,\n  source_document_ids, created_at, updated_at\n)\nSELECT \n  gen_random_uuid(),\n  persona_id,\n  category,\n  topic,\n  content,\n  confidence,\n  1,\n  ARRAY['{{ $('Loop Over Documents').first().json.document_id }}'],\n  NOW(),\n  NOW()\nFROM doc_chars\nON CONFLICT (persona_id, content) DO UPDATE SET\n  occurrences = persona_characteristics.occurrences + 1,\n  confidence = GREATEST(persona_characteristics.confidence, EXCLUDED.confidence),\n  source_document_ids = array_cat(persona_characteristics.source_document_ids, EXCLUDED.source_document_ids),\n  updated_at = NOW()"
+      },
+      "name": "Aggregate to Persona Characteristics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1650, 200],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE documents\nSET \n  extracted_chars = (\n    SELECT COUNT(*) FROM document_characteristics\n    WHERE document_id = '{{ $('Loop Over Documents').first().json.document_id }}'\n  ),\n  updated_at = NOW()\nWHERE id = '{{ $('Loop Over Documents').first().json.document_id }}'"
+      },
+      "name": "Update Document Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1850, 200],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "name": "Continue Loop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2050, 200]
+    },
+    {
+      "parameters": {},
+      "name": "No Documents - Skip",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [850, 400]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Unprocessed Documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unprocessed Documents": {
+      "main": [
+        [
+          {
+            "node": "Has Documents?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Documents?": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Documents",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Documents - Skip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Documents": {
+      "main": [
+        [
+          {
+            "node": "Claude Extract Characteristics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Continue Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Extract Characteristics": {
+      "main": [
+        [
+          {
+            "node": "Parse Claude Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Claude Response": {
+      "main": [
+        [
+          {
+            "node": "Save Document Characteristics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Document Characteristics": {
+      "main": [
+        [
+          {
+            "node": "Aggregate to Persona Characteristics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate to Persona Characteristics": {
+      "main": [
+        [
+          {
+            "node": "Update Document Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Document Stats": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "processor"
+    },
+    {
+      "name": "ai"
+    },
+    {
+      "name": "characteristics"
+    }
+  ]
+}

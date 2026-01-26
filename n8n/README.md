@@ -46,14 +46,17 @@ n8n 접속 후 **Settings → Credentials**에서 추가:
 
 ```
 workflows/
-├── 01-youtube-collector.json      # YouTube 트랜스크립트 수집
-├── 02-twitter-collector.json      # Twitter/X 수집
-├── 03-blog-collector.json         # 블로그 수집
-├── 04-news-collector.json         # 뉴스 수집
-├── 05-document-processor.json     # 문서 처리 & 청킹
-├── 06-embedding-generator.json    # 벡터 임베딩 생성
-├── 07-characteristic-extractor.json # 특성 추출 (Claude)
-└── 08-backfill-scheduler.json     # 백필 스케줄러
+├── 01-youtube-collector.json       # YouTube 트랜스크립트 수집 (6시간마다)
+├── 02-blog-collector.json          # 블로그 수집 (범용)
+├── 02b-vitalik-collector.json      # Vitalik Buterin 블로그
+├── 02c-gates-collector.json        # Gates Notes 블로그
+├── 02d-altman-collector.json       # Sam Altman 블로그
+├── 03-twitter-collector.json       # Twitter/X 수집 (12시간마다)
+├── 04-news-collector.json          # 뉴스/인터뷰 수집 (매일)
+├── 05-document-processor.json      # 문서 처리 & 청킹 (15분마다)
+├── 06-embedding-generator.json     # 벡터 임베딩 생성 (30분마다)
+├── 07-characteristic-extractor.json # 특성 추출 - Claude (4시간마다)
+└── 08-backfill-scheduler.json      # 백필 스케줄러 (예정)
 ```
 
 ## Commands

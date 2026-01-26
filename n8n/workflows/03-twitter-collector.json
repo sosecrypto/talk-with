@@ -1,0 +1,301 @@
+{
+  "name": "03 - Twitter/X Collector",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT s.id as source_id, s.persona_id, s.config, p.slug as persona_slug, p.name as persona_name\nFROM sources s\nJOIN personas p ON s.persona_id = p.id\nWHERE s.type IN ('TWITTER_PROFILE', 'TWITTER_SEARCH')\nAND s.status = 'ACTIVE'\nAND (s.next_fetch_at IS NULL OR s.next_fetch_at <= NOW())\nORDER BY s.priority DESC\nLIMIT 5"
+      },
+      "name": "Get Active Twitter Sources",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.source_id }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "name": "Has Sources?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apidojo~tweet-scraper/runs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"handles\": [\"{{ $json.config.username }}\"],\n  \"tweetsDesired\": 100,\n  \"includeReplies\": {{ $json.config.includeReplies || false }},\n  \"includeRetweets\": false,\n  \"proxyConfiguration\": { \"useApifyProxy\": true }\n}",
+        "options": {}
+      },
+      "name": "Call Apify Twitter Scraper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIAL_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.apify.com/v2/actor-runs/{{ $json.data.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "name": "Wait for Apify Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIAL_ID",
+          "name": "Apify API"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 15,
+      "waitBetweenTries": 20000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.apify.com/v2/datasets/{{ $json.data.defaultDatasetId }}/items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get Tweet Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIAL_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst sourceInfo = $('Get Active Twitter Sources').first().json;\n\n// Group tweets by date (daily batches)\nconst tweetsByDate = {};\n\nfor (const item of items) {\n  const tweet = item.json;\n  if (!tweet.text) continue;\n  \n  const date = new Date(tweet.createdAt).toISOString().split('T')[0];\n  if (!tweetsByDate[date]) {\n    tweetsByDate[date] = [];\n  }\n  tweetsByDate[date].push(tweet);\n}\n\n// Create one document per date batch\nconst results = [];\nfor (const [date, tweets] of Object.entries(tweetsByDate)) {\n  // Sort tweets by time within the day\n  tweets.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));\n  \n  // Combine tweets into content\n  const content = tweets.map(t => {\n    const time = new Date(t.createdAt).toISOString();\n    const metrics = `[Likes: ${t.likeCount || 0}, RTs: ${t.retweetCount || 0}]`;\n    return `[${time}] ${metrics}\\n${t.text}\\n`;\n  }).join('\\n---\\n\\n');\n  \n  results.push({\n    json: {\n      external_id: `twitter-${sourceInfo.config.username}-${date}`,\n      external_url: `https://twitter.com/${sourceInfo.config.username}`,\n      title: `@${sourceInfo.config.username} Tweets - ${date}`,\n      raw_content: content,\n      author: sourceInfo.config.username,\n      published_at: new Date(date).toISOString(),\n      language: 'EN',\n      word_count: content.split(/\\s+/).length,\n      source_metadata: {\n        platform: 'twitter',\n        username: sourceInfo.config.username,\n        tweet_count: tweets.length,\n        total_likes: tweets.reduce((sum, t) => sum + (t.likeCount || 0), 0),\n        total_retweets: tweets.reduce((sum, t) => sum + (t.retweetCount || 0), 0)\n      },\n      persona_id: sourceInfo.persona_id,\n      source_id: sourceInfo.source_id\n    }\n  });\n}\n\nreturn results;"
+      },
+      "name": "Transform Tweets to Documents",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO documents (\n  id, persona_id, source_id, external_id, external_url,\n  title, raw_content, author, published_at, language,\n  word_count, source_metadata, status, created_at, updated_at\n) VALUES (\n  gen_random_uuid(),\n  '{{ $json.persona_id }}',\n  '{{ $json.source_id }}',\n  '{{ $json.external_id }}',\n  '{{ $json.external_url }}',\n  '{{ $json.title.replace(/'/g, \"''\") }}',\n  '{{ $json.raw_content.replace(/'/g, \"''\").substring(0, 100000) }}',\n  '{{ ($json.author || \"\").replace(/'/g, \"''\") }}',\n  '{{ $json.published_at }}',\n  '{{ $json.language }}',\n  {{ $json.word_count }},\n  '{{ JSON.stringify($json.source_metadata).replace(/'/g, \"''\") }}'::jsonb,\n  'PENDING_PROCESSING',\n  NOW(),\n  NOW()\n)\nON CONFLICT (source_id, external_id) DO UPDATE SET\n  title = EXCLUDED.title,\n  raw_content = EXCLUDED.raw_content,\n  source_metadata = EXCLUDED.source_metadata,\n  updated_at = NOW()\nRETURNING id"
+      },
+      "name": "Save to Documents",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1650, 200],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE sources\nSET \n  last_fetched_at = NOW(),\n  next_fetch_at = NOW() + INTERVAL '12 hours',\n  total_fetches = total_fetches + 1,\n  success_fetches = success_fetches + 1,\n  total_documents = total_documents + {{ $('Transform Tweets to Documents').all().length }},\n  updated_at = NOW()\nWHERE id = '{{ $('Get Active Twitter Sources').first().json.source_id }}'"
+      },
+      "name": "Update Source Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1850, 200],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO fetch_logs (id, source_id, status, items_found, items_new, duration_ms, metadata, created_at)\nVALUES (\n  gen_random_uuid(),\n  '{{ $('Get Active Twitter Sources').first().json.source_id }}',\n  'success',\n  {{ $('Get Tweet Results').first().json.length || 0 }},\n  {{ $('Transform Tweets to Documents').all().length }},\n  {{ Date.now() - $('Schedule Trigger').first().json.timestamp }},\n  '{\"platform\": \"twitter\"}'::jsonb,\n  NOW()\n)"
+      },
+      "name": "Log Fetch Result",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2050, 200],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "name": "No Sources - Skip",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [850, 400]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Active Twitter Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Twitter Sources": {
+      "main": [
+        [
+          {
+            "node": "Has Sources?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Sources?": {
+      "main": [
+        [
+          {
+            "node": "Call Apify Twitter Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Sources - Skip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Apify Twitter Scraper": {
+      "main": [
+        [
+          {
+            "node": "Wait for Apify Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Apify Run": {
+      "main": [
+        [
+          {
+            "node": "Get Tweet Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Tweet Results": {
+      "main": [
+        [
+          {
+            "node": "Transform Tweets to Documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Tweets to Documents": {
+      "main": [
+        [
+          {
+            "node": "Save to Documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Documents": {
+      "main": [
+        [
+          {
+            "node": "Update Source Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Source Stats": {
+      "main": [
+        [
+          {
+            "node": "Log Fetch Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "collector"
+    },
+    {
+      "name": "twitter"
+    }
+  ]
+}

@@ -1,0 +1,314 @@
+{
+  "name": "04 - News & Interview Collector",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT p.id as persona_id, p.slug, p.name as persona_name\nFROM personas p\nWHERE p.visibility IN ('PUBLIC', 'BETA')\nAND p.is_active = true\nORDER BY p.priority DESC\nLIMIT 10"
+      },
+      "name": "Get Active Personas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "Loop Over Personas",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/lhotanok~google-news-scraper/runs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"queries\": [\n    \"{{ $json.persona_name }} interview\",\n    \"{{ $json.persona_name }} speech\",\n    \"{{ $json.persona_name }} statement\"\n  ],\n  \"language\": \"en\",\n  \"maxItems\": 30,\n  \"dateRange\": \"past_week\"\n}",
+        "options": {}
+      },
+      "name": "Call Apify Google News",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIAL_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.apify.com/v2/actor-runs/{{ $json.data.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "name": "Wait for News Scraper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIAL_ID",
+          "name": "Apify API"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 10,
+      "waitBetweenTries": 15000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.apify.com/v2/datasets/{{ $json.data.defaultDatasetId }}/items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Get News Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIAL_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst personaInfo = $('Loop Over Personas').first().json;\nconst results = [];\nconst seenUrls = new Set();\n\n// Check existing URLs to avoid duplicates\nconst existingDocs = await $('Get Active Personas').all();\n\nfor (const item of items) {\n  const article = item.json;\n  \n  // Skip if no URL or already seen\n  if (!article.url || seenUrls.has(article.url)) continue;\n  seenUrls.add(article.url);\n  \n  // Skip if title doesn't contain persona name (relevance filter)\n  const nameWords = personaInfo.persona_name.toLowerCase().split(' ');\n  const titleLower = (article.title || '').toLowerCase();\n  const snippetLower = (article.snippet || '').toLowerCase();\n  const isRelevant = nameWords.some(word => \n    titleLower.includes(word) || snippetLower.includes(word)\n  );\n  if (!isRelevant) continue;\n  \n  results.push({\n    json: {\n      external_id: Buffer.from(article.url).toString('base64').substring(0, 64),\n      external_url: article.url,\n      title: article.title || 'News Article',\n      raw_content: article.snippet || article.description || '',\n      author: article.source || 'Unknown',\n      published_at: article.publishedAt ? new Date(article.publishedAt).toISOString() : new Date().toISOString(),\n      language: 'EN',\n      word_count: (article.snippet || '').split(/\\s+/).length,\n      source_metadata: {\n        source_name: article.source,\n        search_query: article.query,\n        thumbnail: article.thumbnail,\n        type: 'news'\n      },\n      persona_id: personaInfo.persona_id,\n      source_id: null,\n      needs_full_content: true\n    }\n  });\n}\n\nreturn results.slice(0, 20); // Limit to 20 articles per persona"
+      },
+      "name": "Filter & Transform News",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~web-scraper/runs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"startUrls\": [{ \"url\": \"{{ $json.external_url }}\" }],\n  \"pageFunction\": \"async function pageFunction(context) {\\n  const { $, request } = context;\\n  const article = $('article').first();\\n  return {\\n    url: request.url,\\n    content: article.length ? article.text() : $('body').text(),\\n    title: $('h1').first().text() || document.title\\n  };\\n}\",\n  \"maxRequestsPerCrawl\": 1\n}",
+        "options": {}
+      },
+      "name": "Fetch Full Article Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1650, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIAL_ID",
+          "name": "Apify API"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO documents (\n  id, persona_id, source_id, external_id, external_url,\n  title, raw_content, author, published_at, language,\n  word_count, source_metadata, status, created_at, updated_at\n) VALUES (\n  gen_random_uuid(),\n  '{{ $json.persona_id }}',\n  NULL,\n  '{{ $json.external_id }}',\n  '{{ $json.external_url }}',\n  '{{ $json.title.replace(/'/g, \"''\").substring(0, 500) }}',\n  '{{ $json.raw_content.replace(/'/g, \"''\").substring(0, 100000) }}',\n  '{{ ($json.author || \"\").replace(/'/g, \"''\") }}',\n  '{{ $json.published_at }}',\n  '{{ $json.language }}',\n  {{ $json.word_count }},\n  '{{ JSON.stringify($json.source_metadata).replace(/'/g, \"''\") }}'::jsonb,\n  'PENDING_PROCESSING',\n  NOW(),\n  NOW()\n)\nON CONFLICT (external_id) DO NOTHING\nRETURNING id"
+      },
+      "name": "Save News Articles",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1850, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO fetch_logs (id, source_id, status, items_found, items_new, metadata, created_at)\nVALUES (\n  gen_random_uuid(),\n  NULL,\n  'success',\n  {{ $('Get News Results').first().json.length || 0 }},\n  {{ $('Filter & Transform News').all().length }},\n  '{{ JSON.stringify({ persona_id: $(\"Loop Over Personas\").first().json.persona_id, persona_name: $(\"Loop Over Personas\").first().json.persona_name, type: \"news_search\" }).replace(/'/g, \"''\") }}'::jsonb,\n  NOW()\n)"
+      },
+      "name": "Log Fetch Result",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2050, 300],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "name": "Continue Loop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2250, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Active Personas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Personas": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Personas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Personas": {
+      "main": [
+        [
+          {
+            "node": "Call Apify Google News",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Continue Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Apify Google News": {
+      "main": [
+        [
+          {
+            "node": "Wait for News Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for News Scraper": {
+      "main": [
+        [
+          {
+            "node": "Get News Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get News Results": {
+      "main": [
+        [
+          {
+            "node": "Filter & Transform News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter & Transform News": {
+      "main": [
+        [
+          {
+            "node": "Fetch Full Article Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Full Article Content": {
+      "main": [
+        [
+          {
+            "node": "Save News Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save News Articles": {
+      "main": [
+        [
+          {
+            "node": "Log Fetch Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Fetch Result": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Personas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "collector"
+    },
+    {
+      "name": "news"
+    }
+  ]
+}
