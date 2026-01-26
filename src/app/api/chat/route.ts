@@ -41,7 +41,7 @@ async function searchRAG(query: string, personaSlug: string, topK = 5): Promise<
     const { data: chunks, error } = await supabase.rpc('match_chunks', {
       query_embedding: queryEmbedding,
       persona_slug: personaSlug,
-      match_threshold: 0.65,
+      match_threshold: 0.3,
       match_count: topK,
     })
 
