@@ -2,12 +2,22 @@
 
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
+
+const isDev = process.env.NODE_ENV === 'development'
 
 function LoginContent() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/chat'
   const error = searchParams.get('error')
+  const [testEmail, setTestEmail] = useState('test@example.com')
+
+  const handleTestLogin = async () => {
+    await signIn('credentials', {
+      email: testEmail,
+      callbackUrl,
+    })
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
@@ -32,6 +42,31 @@ function LoginContent() {
         )}
 
         <div className="mt-8 space-y-4">
+          {/* 개발 모드 테스트 로그인 */}
+          {isDev && (
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg space-y-3">
+              <p className="text-sm text-yellow-700 dark:text-yellow-400 font-medium">
+                Development Mode - Test Login
+              </p>
+              <input
+                type="email"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                className="w-full px-3 py-2 border border-yellow-300 dark:border-yellow-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                placeholder="test@example.com"
+              />
+              <button
+                onClick={handleTestLogin}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Quick Test Login
+              </button>
+            </div>
+          )}
+
           <button
             onClick={() => signIn('google', { callbackUrl })}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

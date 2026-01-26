@@ -30,149 +30,217 @@ export function ChatWindow({
   }, [messages])
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-4">
+    <div className="flex flex-col h-full bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      {/* Messages Container */}
+      <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full">
+          <div className="flex flex-col items-center justify-center min-h-full px-4 py-12">
+            {/* Animated Background Orbs */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-violet-200/30 to-pink-200/30 dark:from-violet-900/20 dark:to-pink-900/20 rounded-full blur-3xl animate-pulse" />
+              <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-to-r from-cyan-200/30 to-blue-200/30 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-full blur-3xl animate-pulse delay-1000" />
+            </div>
+
             {/* Hero Section */}
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <div className="relative z-10 text-center mb-12">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-violet-500/10 to-pink-500/10 dark:from-violet-500/20 dark:to-pink-500/20 border border-violet-200/50 dark:border-violet-700/50 mb-6">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500"></span>
+                </span>
+                <span className="text-sm font-medium bg-gradient-to-r from-violet-600 to-pink-600 dark:from-violet-400 dark:to-pink-400 bg-clip-text text-transparent">
+                  AI-Powered Conversations
+                </span>
+              </div>
+              <h2 className="text-5xl font-bold bg-gradient-to-r from-slate-900 via-violet-800 to-slate-900 dark:from-white dark:via-violet-300 dark:to-white bg-clip-text text-transparent mb-4 tracking-tight">
                 Talk With Legends
               </h2>
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-lg text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
                 {selectedPersona
-                  ? `You're chatting with ${selectedPersona.name}`
-                  : 'Select a legend to start a conversation'}
+                  ? `Experience authentic conversations with ${selectedPersona.name}`
+                  : 'Connect with visionary minds and legendary figures'}
               </p>
             </div>
 
             {/* Selected Persona Card */}
             {selectedPersona && (
-              <div
-                className="mb-8 p-6 rounded-2xl text-white max-w-md w-full"
-                style={{ backgroundColor: selectedPersona.accentColor || '#3B82F6' }}
-              >
-                <div className="flex items-center gap-4">
-                  {selectedPersona.imageUrl ? (
-                    <img
-                      src={selectedPersona.imageUrl}
-                      alt={selectedPersona.name}
-                      className="w-16 h-16 rounded-full object-cover border-3 border-white/30"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
-                      {selectedPersona.name[0]}
-                    </div>
-                  )}
-                  <div>
-                    <h3 className="text-xl font-bold">{selectedPersona.name}</h3>
-                    {selectedPersona.nameKo && (
-                      <p className="text-white/70">{selectedPersona.nameKo}</p>
-                    )}
-                  </div>
-                </div>
-                {selectedPersona.bioShort && (
-                  <p className="mt-4 text-white/90 text-sm">{selectedPersona.bioShort}</p>
-                )}
-                {selectedPersona.totalDocuments > 0 && (
-                  <div className="mt-4 flex items-center gap-2 text-white/70 text-xs">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                      className="w-4 h-4"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                      />
-                    </svg>
-                    <span>{selectedPersona.totalDocuments} sources indexed</span>
-                  </div>
-                )}
-              </div>
-            )}
+              <div className="relative z-10 mb-10 w-full max-w-lg">
+                <div
+                  className="relative overflow-hidden rounded-3xl p-8 backdrop-blur-xl"
+                  style={{
+                    background: `linear-gradient(135deg, ${selectedPersona.accentColor}15, ${selectedPersona.accentColor}05)`,
+                    border: `1px solid ${selectedPersona.accentColor}30`,
+                  }}
+                >
+                  {/* Glow Effect */}
+                  <div
+                    className="absolute -top-20 -right-20 w-40 h-40 rounded-full blur-3xl opacity-50"
+                    style={{ backgroundColor: selectedPersona.accentColor }}
+                  />
 
-            {/* Persona Grid (when no persona selected) */}
-            {!selectedPersona && personas.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl w-full px-4">
-                {personas.slice(0, 8).map((persona) => (
-                  <button
-                    key={persona.id}
-                    onClick={() => onSelectPersona?.(persona)}
-                    className="group p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg transition-all text-left"
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      {persona.imageUrl ? (
-                        <img
-                          src={persona.imageUrl}
-                          alt={persona.name}
-                          className="w-16 h-16 rounded-full object-cover mb-3 group-hover:scale-105 transition-transform"
-                        />
-                      ) : (
+                  <div className="relative flex items-center gap-6">
+                    {selectedPersona.imageUrl ? (
+                      <div className="relative">
                         <div
-                          className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold mb-3 group-hover:scale-105 transition-transform"
-                          style={{ backgroundColor: persona.accentColor || '#6B7280' }}
-                        >
-                          {persona.name[0]}
+                          className="absolute inset-0 rounded-2xl blur-xl opacity-60"
+                          style={{ backgroundColor: selectedPersona.accentColor }}
+                        />
+                        <img
+                          src={selectedPersona.imageUrl}
+                          alt={selectedPersona.name}
+                          className="relative w-24 h-24 rounded-2xl object-cover ring-4 ring-white/50 dark:ring-white/20"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className="w-24 h-24 rounded-2xl flex items-center justify-center text-4xl font-bold text-white shadow-2xl"
+                        style={{ backgroundColor: selectedPersona.accentColor }}
+                      >
+                        {selectedPersona.name[0]}
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <h3
+                        className="text-2xl font-bold mb-1"
+                        style={{ color: selectedPersona.accentColor }}
+                      >
+                        {selectedPersona.name}
+                      </h3>
+                      {selectedPersona.nameKo && (
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-3">
+                          {selectedPersona.nameKo}
+                        </p>
+                      )}
+                      {selectedPersona.totalDocuments > 0 && (
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/50 dark:bg-white/10 text-xs font-medium text-slate-600 dark:text-slate-300">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          {selectedPersona.totalDocuments} sources indexed
                         </div>
                       )}
-                      <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
-                        {persona.name}
-                      </h4>
-                      {persona.nameKo && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{persona.nameKo}</p>
-                      )}
                     </div>
-                  </button>
-                ))}
+                  </div>
+                  {selectedPersona.bioShort && (
+                    <p className="relative mt-6 text-slate-600 dark:text-slate-300 leading-relaxed">
+                      {selectedPersona.bioShort}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Empty State (no personas) */}
+            {/* Persona Grid */}
+            {!selectedPersona && personas.length > 0 && (
+              <div className="relative z-10 w-full max-w-5xl px-4">
+                <h3 className="text-center text-sm font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-8">
+                  Choose a Legend
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                  {personas.slice(0, 8).map((persona, idx) => (
+                    <button
+                      key={persona.id}
+                      onClick={() => onSelectPersona?.(persona)}
+                      className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 p-6 transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50"
+                      style={{
+                        animationDelay: `${idx * 100}ms`,
+                      }}
+                    >
+                      {/* Hover Glow */}
+                      <div
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"
+                        style={{ background: `radial-gradient(circle at center, ${persona.accentColor}20, transparent)` }}
+                      />
+
+                      <div className="relative flex flex-col items-center">
+                        {persona.imageUrl ? (
+                          <div className="relative mb-4">
+                            <div
+                              className="absolute inset-0 rounded-xl blur-lg opacity-0 group-hover:opacity-60 transition-opacity duration-500"
+                              style={{ backgroundColor: persona.accentColor }}
+                            />
+                            <img
+                              src={persona.imageUrl}
+                              alt={persona.name}
+                              className="relative w-20 h-20 rounded-xl object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
+                          </div>
+                        ) : (
+                          <div
+                            className="w-20 h-20 rounded-xl flex items-center justify-center text-white text-2xl font-bold mb-4 transition-all duration-500 group-hover:scale-110 group-hover:shadow-lg"
+                            style={{ backgroundColor: persona.accentColor }}
+                          >
+                            {persona.name[0]}
+                          </div>
+                        )}
+                        <h4 className="font-semibold text-slate-800 dark:text-white text-center transition-colors duration-300">
+                          {persona.name}
+                        </h4>
+                        {persona.nameKo && (
+                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{persona.nameKo}</p>
+                        )}
+
+                        {/* Hover Arrow */}
+                        <div
+                          className="mt-3 flex items-center gap-1 text-xs font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0"
+                          style={{ color: persona.accentColor }}
+                        >
+                          <span>Start Chat</span>
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
             {!selectedPersona && personas.length === 0 && (
-              <div className="text-center text-gray-500 dark:text-gray-400">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-16 h-16 mx-auto mb-4 opacity-50"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
-                  />
-                </svg>
-                <p className="text-lg font-medium">Start a conversation</p>
-                <p className="text-sm">Send a message to begin chatting</p>
+              <div className="relative z-10 text-center">
+                <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center">
+                  <svg className="w-12 h-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                  </svg>
+                </div>
+                <p className="text-xl font-semibold text-slate-700 dark:text-slate-200 mb-2">Ready to Chat</p>
+                <p className="text-slate-500 dark:text-slate-400">Select a persona to begin your conversation</p>
               </div>
             )}
 
-            {/* Suggestion prompts */}
+            {/* Quick Prompts */}
             {selectedPersona && (
-              <div className="mt-6 max-w-2xl w-full px-4">
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 text-center">
-                  Try asking:
+              <div className="relative z-10 w-full max-w-2xl px-4 mt-8">
+                <p className="text-center text-sm font-medium text-slate-400 dark:text-slate-500 mb-4">
+                  Suggested Questions
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {[
-                    `What's your view on the future of AI?`,
+                    `What's your vision for the future of technology?`,
                     `What's the most important lesson you've learned?`,
-                    `How do you approach difficult decisions?`,
-                    `What advice would you give to young entrepreneurs?`,
+                    `How do you approach solving complex problems?`,
+                    `What advice would you give to aspiring leaders?`,
                   ].map((prompt, idx) => (
                     <button
                       key={idx}
                       onClick={() => onSendMessage(prompt)}
-                      className="p-3 text-left text-sm bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-700 dark:text-gray-300"
+                      className="group relative overflow-hidden text-left p-4 rounded-2xl bg-white/60 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm hover:bg-white dark:hover:bg-slate-800 transition-all duration-300 hover:shadow-lg hover:shadow-slate-200/30 dark:hover:shadow-slate-900/30"
                     >
-                      {prompt}
+                      <div
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        style={{ background: `linear-gradient(135deg, ${selectedPersona.accentColor}08, transparent)` }}
+                      />
+                      <p className="relative text-sm text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-white transition-colors duration-300">
+                        {prompt}
+                      </p>
+                      <div className="relative mt-2 flex items-center gap-1 text-xs opacity-0 group-hover:opacity-100 transition-all duration-300" style={{ color: selectedPersona.accentColor }}>
+                        <span>Ask this</span>
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -180,31 +248,46 @@ export function ChatWindow({
             )}
           </div>
         ) : (
-          <>
-            {messages.map((message) => (
-              <ChatMessage key={message.id} message={message} persona={selectedPersona} />
+          <div className="max-w-4xl mx-auto px-4 py-8">
+            {messages.map((message, idx) => (
+              <ChatMessage
+                key={message.id}
+                message={message}
+                persona={selectedPersona}
+                isLast={idx === messages.length - 1}
+              />
             ))}
+
+            {/* Streaming Indicator */}
             {isStreaming && messages[messages.length - 1]?.content === '' && (
-              <div className="flex justify-start mb-4">
-                <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 py-3">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                    <div
-                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                      style={{ animationDelay: '0.1s' }}
-                    />
-                    <div
-                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                      style={{ animationDelay: '0.2s' }}
-                    />
+              <div className="flex items-start gap-4 mb-6">
+                {selectedPersona && (
+                  <div
+                    className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold shadow-lg"
+                    style={{ backgroundColor: selectedPersona.accentColor }}
+                  >
+                    {selectedPersona.imageUrl ? (
+                      <img src={selectedPersona.imageUrl} alt="" className="w-full h-full rounded-xl object-cover" />
+                    ) : (
+                      selectedPersona.name[0]
+                    )}
+                  </div>
+                )}
+                <div className="bg-white dark:bg-slate-800 rounded-2xl rounded-tl-sm px-6 py-4 shadow-sm border border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>
             )}
-          </>
+            <div ref={messagesEndRef} />
+          </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
+
+      {/* Input Area */}
       <ChatInput onSend={onSendMessage} disabled={isStreaming} persona={selectedPersona} />
     </div>
   )

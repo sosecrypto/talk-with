@@ -7,6 +7,25 @@ import { generatePersonaPrompt, getPersonaBySlug } from '@/lib/prompt-generator'
 import { generateEmbedding } from '@/lib/openai'
 import { getSupabaseAdmin } from '@/lib/supabase'
 
+const isDev = process.env.NODE_ENV === 'development'
+
+// 개발 모드에서 테스트 사용자 자동 생성/조회
+async function getOrCreateDevUser(userId: string) {
+  let user = await prisma.user.findUnique({ where: { id: userId } })
+
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        id: userId,
+        email: 'test@example.com',
+        name: 'Test User',
+      },
+    })
+  }
+
+  return user
+}
+
 interface RAGChunk {
   id: string
   content: string
@@ -41,8 +60,17 @@ async function searchRAG(query: string, personaSlug: string, topK = 5): Promise<
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // 개발 모드에서는 인증 우회 + 테스트 사용자 생성
+    let userId: string
+    if (isDev) {
+      userId = session?.user?.id || 'dev-user-1'
+      await getOrCreateDevUser(userId)
+    } else {
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      userId = session.user.id
     }
 
     const { message, conversationId, personaSlug } = await request.json()
@@ -68,7 +96,7 @@ export async function POST(request: NextRequest) {
       conversation = await prisma.conversation.findFirst({
         where: {
           id: conversationId,
-          userId: session.user.id,
+          userId,
         },
         include: {
           messages: {
@@ -83,7 +111,7 @@ export async function POST(request: NextRequest) {
     } else {
       conversation = await prisma.conversation.create({
         data: {
-          userId: session.user.id,
+          userId,
           personaId,
         },
         include: {

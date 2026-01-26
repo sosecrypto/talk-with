@@ -3,21 +3,56 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+const isDev = process.env.NODE_ENV === 'development'
+
+// 개발 모드에서 테스트 사용자 자동 생성/조회
+async function getOrCreateDevUser(userId: string) {
+  let user = await prisma.user.findUnique({ where: { id: userId } })
+
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        id: userId,
+        email: 'test@example.com',
+        name: 'Test User',
+      },
+    })
+  }
+
+  return user
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    let userId: string
+    if (isDev) {
+      userId = session?.user?.id || 'dev-user-1'
+      await getOrCreateDevUser(userId)
+    } else {
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      userId = session.user.id
     }
 
     const conversations = await prisma.conversation.findMany({
-      where: { userId: session.user.id },
+      where: { userId },
       orderBy: { updatedAt: 'desc' },
       select: {
         id: true,
         title: true,
         createdAt: true,
         updatedAt: true,
+        persona: {
+          select: {
+            name: true,
+            slug: true,
+            imageUrl: true,
+            accentColor: true,
+          },
+        },
         _count: {
           select: { messages: true },
         },
@@ -34,15 +69,23 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    let userId: string
+    if (isDev) {
+      userId = session?.user?.id || 'dev-user-1'
+      await getOrCreateDevUser(userId)
+    } else {
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      userId = session.user.id
     }
 
     const { title } = await request.json()
 
     const conversation = await prisma.conversation.create({
       data: {
-        userId: session.user.id,
+        userId,
         title: title || null,
       },
     })
