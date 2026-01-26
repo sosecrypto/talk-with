@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { generateEmbedding } from '@/lib/openai'
 
+const isDev = process.env.NODE_ENV === 'development'
+
 export interface RAGChunk {
   id: string
   content: string
@@ -23,7 +25,9 @@ export interface RAGSearchResult {
 export async function POST(request: NextRequest): Promise<NextResponse<RAGSearchResult>> {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+
+    // 개발 모드에서는 인증 우회
+    if (!isDev && !session?.user?.id) {
       return NextResponse.json(
         { success: false, chunks: [], query: '', personaSlug: '', error: 'Unauthorized' },
         { status: 401 }
