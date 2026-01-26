@@ -4,12 +4,21 @@ import { useState, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { ChatWindow } from '@/components/chat/ChatWindow'
 import { ConversationList } from '@/components/chat/ConversationList'
+import { PersonaSelector } from '@/components/persona/PersonaSelector'
 import { useChat } from '@/hooks/useChat'
 import { useConversations } from '@/hooks/useConversations'
+import { usePersonas, Persona } from '@/hooks/usePersonas'
 
 export default function ChatPage() {
   const { data: session } = useSession()
   const [sidebarOpen, setSidebarOpen] = useState(true)
+
+  const {
+    personas,
+    isLoading: personasLoading,
+    selectedPersona,
+    selectPersona,
+  } = usePersonas()
 
   const {
     messages,
@@ -19,15 +28,20 @@ export default function ChatPage() {
     sendMessage,
     loadConversation,
     resetChat,
+    setActivePersona,
   } = useChat()
 
   const {
     conversations,
-    isLoading: conversationsLoading,
     fetchConversation,
     deleteConversation,
     updateConversation,
   } = useConversations()
+
+  // Sync persona selection with chat hook
+  useEffect(() => {
+    setActivePersona(selectedPersona?.slug || null)
+  }, [selectedPersona, setActivePersona])
 
   useEffect(() => {
     if (title && conversationId) {
@@ -49,6 +63,22 @@ export default function ChatPage() {
     }
   }
 
+  const handleSelectPersona = (persona: Persona | null) => {
+    selectPersona(persona)
+    // Reset chat when changing persona
+    if (messages.length > 0) {
+      resetChat()
+    }
+  }
+
+  const handleSelectPersonaFromGrid = (persona: Persona) => {
+    selectPersona(persona)
+  }
+
+  const handleSendMessage = (content: string) => {
+    sendMessage(content, selectedPersona?.slug)
+  }
+
   return (
     <div className="flex h-screen bg-white dark:bg-gray-900">
       {/* Sidebar */}
@@ -58,7 +88,17 @@ export default function ChatPage() {
         } transition-all duration-300 overflow-hidden border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col`}
       >
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Talk With</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Talk With Legends</h1>
+        </div>
+
+        {/* Persona Selector in Sidebar */}
+        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+          <PersonaSelector
+            personas={personas}
+            selectedPersona={selectedPersona}
+            onSelect={handleSelectPersona}
+            isLoading={personasLoading}
+          />
         </div>
 
         <div className="flex-1 overflow-hidden">
@@ -140,9 +180,52 @@ export default function ChatPage() {
               />
             </svg>
           </button>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {title || 'New Chat'}
-          </h2>
+
+          {/* Title with Persona Badge */}
+          <div className="flex-1 flex items-center gap-3">
+            {selectedPersona && (
+              <div
+                className="flex items-center gap-2 px-3 py-1 rounded-full text-white text-sm"
+                style={{ backgroundColor: selectedPersona.accentColor || '#3B82F6' }}
+              >
+                {selectedPersona.imageUrl ? (
+                  <img
+                    src={selectedPersona.imageUrl}
+                    alt={selectedPersona.name}
+                    className="w-5 h-5 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">
+                    {selectedPersona.name[0]}
+                  </span>
+                )}
+                <span>{selectedPersona.name}</span>
+              </div>
+            )}
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {title || (selectedPersona ? `Chat with ${selectedPersona.name}` : 'New Chat')}
+            </h2>
+          </div>
+
+          {/* Clear Persona Button */}
+          {selectedPersona && (
+            <button
+              onClick={() => handleSelectPersona(null)}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+              title="Clear persona"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-5 h-5"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Chat Window */}
@@ -150,7 +233,10 @@ export default function ChatPage() {
           <ChatWindow
             messages={messages}
             isStreaming={isStreaming}
-            onSendMessage={sendMessage}
+            onSendMessage={handleSendMessage}
+            selectedPersona={selectedPersona}
+            personas={personas}
+            onSelectPersona={handleSelectPersonaFromGrid}
           />
         </div>
       </div>
