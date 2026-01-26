@@ -1,20 +1,27 @@
 'use client'
 
 import { useState, useRef, KeyboardEvent } from 'react'
+import { Persona } from '@/hooks/usePersonas'
 
 interface ChatInputProps {
   onSend: (message: string) => void
   disabled?: boolean
   placeholder?: string
+  persona?: Persona | null
 }
 
 export function ChatInput({
   onSend,
   disabled = false,
-  placeholder = 'Type a message...',
+  placeholder,
+  persona,
 }: ChatInputProps) {
   const [message, setMessage] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const defaultPlaceholder = persona
+    ? `Message ${persona.name}...`
+    : 'Type a message...'
 
   const handleSend = () => {
     if (message.trim() && !disabled) {
@@ -49,15 +56,23 @@ export function ChatInput({
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleKeyDown}
         onInput={handleInput}
-        placeholder={placeholder}
+        placeholder={placeholder || defaultPlaceholder}
         disabled={disabled}
         rows={1}
         className="flex-1 resize-none rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 px-4 py-3 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+        style={
+          persona
+            ? { borderColor: `${persona.accentColor}40` }
+            : undefined
+        }
       />
       <button
         onClick={handleSend}
         disabled={disabled || !message.trim()}
-        className="rounded-xl bg-blue-600 px-4 py-3 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        style={{
+          backgroundColor: persona?.accentColor || '#2563EB',
+        }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

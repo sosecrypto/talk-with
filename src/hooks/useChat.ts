@@ -12,9 +12,10 @@ export function useChat(options: UseChatOptions = {}) {
   const [isStreaming, setIsStreaming] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [title, setTitle] = useState<string | null>(null)
+  const [personaSlug, setPersonaSlug] = useState<string | null>(null)
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, currentPersonaSlug?: string | null) => {
       if (!content.trim() || isStreaming) return
 
       const userMessage: Message = {
@@ -39,10 +40,17 @@ export function useChat(options: UseChatOptions = {}) {
       setMessages((prev) => [...prev, assistantMessage])
 
       try {
+        // Use passed personaSlug or current state
+        const activePersonaSlug = currentPersonaSlug !== undefined ? currentPersonaSlug : personaSlug
+
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: content, conversationId }),
+          body: JSON.stringify({
+            message: content,
+            conversationId,
+            personaSlug: activePersonaSlug,
+          }),
         })
 
         if (!response.ok) {
@@ -73,6 +81,10 @@ export function useChat(options: UseChatOptions = {}) {
 
                 if (data.conversationId && !conversationId) {
                   setConversationId(data.conversationId)
+                }
+
+                if (data.personaSlug) {
+                  setPersonaSlug(data.personaSlug)
                 }
 
                 if (data.title) {
@@ -106,19 +118,28 @@ export function useChat(options: UseChatOptions = {}) {
         setIsStreaming(false)
       }
     },
-    [conversationId, isStreaming, options]
+    [conversationId, isStreaming, personaSlug, options]
   )
 
   const loadConversation = useCallback((conversation: Conversation) => {
     setConversationId(conversation.id)
     setTitle(conversation.title)
     setMessages(conversation.messages)
+    // Load persona slug if available in conversation
+    if ('personaSlug' in conversation) {
+      setPersonaSlug((conversation as Conversation & { personaSlug?: string }).personaSlug || null)
+    }
   }, [])
 
   const resetChat = useCallback(() => {
     setMessages([])
     setConversationId(null)
     setTitle(null)
+    // Don't reset personaSlug - keep the selected persona
+  }, [])
+
+  const setActivePersona = useCallback((slug: string | null) => {
+    setPersonaSlug(slug)
   }, [])
 
   return {
@@ -126,8 +147,10 @@ export function useChat(options: UseChatOptions = {}) {
     isStreaming,
     conversationId,
     title,
+    personaSlug,
     sendMessage,
     loadConversation,
     resetChat,
+    setActivePersona,
   }
 }
