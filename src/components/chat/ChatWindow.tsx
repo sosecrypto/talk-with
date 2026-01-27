@@ -30,9 +30,25 @@ export function ChatWindow({
   }, [messages])
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="relative flex flex-col h-full bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      {/* Persona Background Image */}
+      {selectedPersona?.imageUrl && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-contain bg-center bg-no-repeat opacity-[0.04] dark:opacity-[0.06]"
+            style={{ backgroundImage: `url(${selectedPersona.imageUrl})` }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(circle at center, ${selectedPersona.accentColor}05 0%, transparent 50%)`,
+            }}
+          />
+        </div>
+      )}
+
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="relative flex-1 overflow-y-auto">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-full px-4 py-12">
             {/* Animated Background Orbs */}
