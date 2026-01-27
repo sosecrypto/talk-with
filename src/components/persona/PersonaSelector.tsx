@@ -45,7 +45,7 @@ export function PersonaSelector({
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all min-w-[160px] max-w-[220px] ${
           selectedPersona
             ? 'bg-gradient-to-r text-white shadow-md'
             : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -62,14 +62,14 @@ export function PersonaSelector({
               <img
                 src={selectedPersona.imageUrl}
                 alt={selectedPersona.name}
-                className="w-8 h-8 rounded-full object-cover border-2 border-white/30"
+                className="w-8 h-8 rounded-full object-cover border-2 border-white/30 flex-shrink-0"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold flex-shrink-0">
                 {selectedPersona.name[0]}
               </div>
             )}
-            <span className="font-medium">{selectedPersona.name}</span>
+            <span className="font-medium truncate">{selectedPersona.name}</span>
           </>
         ) : (
           <>
@@ -109,7 +109,7 @@ export function PersonaSelector({
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
 
           {/* Dropdown Panel */}
-          <div className="absolute top-full left-0 mt-2 w-80 max-h-96 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+          <div className="absolute top-full left-0 mt-2 w-64 max-h-96 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
             {/* Search */}
             <div className="p-3 border-b border-gray-200 dark:border-gray-700">
               <input
@@ -160,42 +160,43 @@ export function PersonaSelector({
                 <button
                   key={persona.id}
                   onClick={() => handleSelect(persona)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                    selectedPersona?.id === persona.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                  className={`relative w-full overflow-hidden transition-all ${
+                    selectedPersona?.id === persona.id ? 'ring-2 ring-blue-500' : ''
                   }`}
                 >
+                  {/* Background Image */}
                   {persona.imageUrl ? (
-                    <img
-                      src={persona.imageUrl}
-                      alt={persona.name}
-                      className="w-10 h-10 rounded-full object-cover"
+                    <div
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{ backgroundImage: `url(${persona.imageUrl})` }}
                     />
                   ) : (
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                      className="absolute inset-0"
                       style={{ backgroundColor: persona.accentColor || '#6B7280' }}
-                    >
-                      {persona.name[0]}
-                    </div>
+                    />
                   )}
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {persona.name}
+                  {/* Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
+
+                  {/* Content */}
+                  <div className="relative flex items-center gap-3 px-4 py-4">
+                    <div className="flex-1 text-left">
+                      <p className="font-semibold text-white drop-shadow-sm">
+                        {persona.name}
+                      </p>
                       {persona.nameKo && (
-                        <span className="text-gray-500 dark:text-gray-400 text-sm ml-2">
+                        <p className="text-white/70 text-xs">
                           {persona.nameKo}
-                        </span>
+                        </p>
                       )}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
-                      {persona.bioShort || `Talk with ${persona.name}`}
-                    </p>
+                    </div>
+                    {persona.totalDocuments > 0 && (
+                      <span className="text-xs bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded-full">
+                        {persona.totalDocuments}
+                      </span>
+                    )}
                   </div>
-                  {persona.totalDocuments > 0 && (
-                    <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
-                      {persona.totalDocuments} docs
-                    </span>
-                  )}
                 </button>
               ))}
 

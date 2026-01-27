@@ -1,0 +1,260 @@
+{
+  "name": "04b - Vitalik News RSS Collector",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "id": "schedule-trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+        "options": {}
+      },
+      "name": "Fetch CoinDesk RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 200],
+      "id": "coindesk-rss"
+    },
+    {
+      "parameters": {
+        "url": "https://cointelegraph.com/rss",
+        "options": {}
+      },
+      "name": "Fetch Cointelegraph RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 400],
+      "id": "cointelegraph-rss"
+    },
+    {
+      "parameters": {
+        "url": "https://decrypt.co/feed",
+        "options": {}
+      },
+      "name": "Fetch Decrypt RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 600],
+      "id": "decrypt-rss"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine all RSS feeds and filter for Vitalik mentions\nconst allItems = [];\nconst sources = ['CoinDesk', 'Cointelegraph', 'Decrypt'];\n\n// Helper to parse RSS XML\nfunction parseRSS(xmlString, sourceName) {\n  const items = [];\n  \n  // Simple regex-based XML parsing for RSS items\n  const itemRegex = /<item[^>]*>([\\s\\S]*?)<\\/item>/gi;\n  let match;\n  \n  while ((match = itemRegex.exec(xmlString)) !== null) {\n    const itemXml = match[1];\n    \n    const getTag = (tag) => {\n      const regex = new RegExp(`<${tag}[^>]*><!\\\\[CDATA\\\\[([\\\\s\\\\S]*?)\\\\]\\\\]><\\\\/${tag}>|<${tag}[^>]*>([\\\\s\\\\S]*?)<\\\\/${tag}>`, 'i');\n      const m = itemXml.match(regex);\n      return m ? (m[1] || m[2] || '').trim() : '';\n    };\n    \n    const title = getTag('title');\n    const link = getTag('link');\n    const description = getTag('description');\n    const pubDate = getTag('pubDate');\n    const author = getTag('dc:creator') || getTag('author') || sourceName;\n    \n    items.push({\n      title,\n      link,\n      description,\n      pubDate,\n      author,\n      source: sourceName\n    });\n  }\n  \n  return items;\n}\n\n// Get all RSS responses\nconst rssResponses = [\n  { data: $('Fetch CoinDesk RSS').first().json.data, source: 'CoinDesk' },\n  { data: $('Fetch Cointelegraph RSS').first().json.data, source: 'Cointelegraph' },\n  { data: $('Fetch Decrypt RSS').first().json.data, source: 'Decrypt' }\n];\n\n// Parse and combine\nfor (const rss of rssResponses) {\n  if (rss.data) {\n    const items = parseRSS(rss.data, rss.source);\n    allItems.push(...items);\n  }\n}\n\n// Filter for Vitalik-related articles\nconst vitalikKeywords = ['vitalik', 'buterin', 'ethereum founder', 'eth founder'];\nconst filteredItems = allItems.filter(item => {\n  const text = `${item.title} ${item.description}`.toLowerCase();\n  return vitalikKeywords.some(keyword => text.includes(keyword));\n});\n\n// Transform to document format\nconst results = filteredItems.map(item => ({\n  json: {\n    external_id: Buffer.from(item.link).toString('base64').substring(0, 64),\n    external_url: item.link,\n    title: item.title.substring(0, 500),\n    raw_content: item.description.replace(/<[^>]*>/g, '').substring(0, 10000),\n    author: item.author,\n    published_at: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),\n    language: 'EN',\n    word_count: item.description.split(/\\s+/).length,\n    source_metadata: {\n      source_name: item.source,\n      type: 'news_rss'\n    }\n  }\n}));\n\nreturn results.slice(0, 30); // Limit to 30 articles"
+      },
+      "name": "Parse & Filter for Vitalik",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 400],
+      "id": "parse-filter"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id FROM personas WHERE slug = 'vitalik-buterin' LIMIT 1"
+      },
+      "name": "Get Vitalik Persona ID",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [900, 400],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      },
+      "id": "get-persona"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.external_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Filter Valid Items",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1100, 400],
+      "id": "filter-valid"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO documents (\n  id, persona_id, external_id, external_url,\n  title, raw_content, author, published_at, language,\n  word_count, source_metadata, status, created_at, updated_at\n) VALUES (\n  gen_random_uuid(),\n  (SELECT id FROM personas WHERE slug = 'vitalik-buterin' LIMIT 1),\n  '{{ $json.external_id }}',\n  '{{ $json.external_url }}',\n  '{{ $json.title.replace(/'/g, \"''\") }}',\n  '{{ $json.raw_content.replace(/'/g, \"''\") }}',\n  '{{ ($json.author || \"\").replace(/'/g, \"''\") }}',\n  '{{ $json.published_at }}',\n  '{{ $json.language }}',\n  {{ $json.word_count }},\n  '{{ JSON.stringify($json.source_metadata).replace(/'/g, \"''\") }}'::jsonb,\n  'PENDING_PROCESSING',\n  NOW(),\n  NOW()\n)\nON CONFLICT (external_id) DO NOTHING\nRETURNING id"
+      },
+      "name": "Save News Articles",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1300, 400],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      },
+      "continueOnFail": true,
+      "id": "save-articles"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO fetch_logs (id, status, items_found, items_new, metadata, created_at)\nVALUES (\n  gen_random_uuid(),\n  'success',\n  {{ $('Parse & Filter for Vitalik').all().length }},\n  {{ $('Save News Articles').all().filter(i => i.json.id).length }},\n  '{\"persona\": \"vitalik-buterin\", \"type\": \"news_rss\", \"sources\": [\"CoinDesk\", \"Cointelegraph\", \"Decrypt\"]}'::jsonb,\n  NOW()\n)"
+      },
+      "name": "Log Fetch Result",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1500, 400],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      },
+      "id": "log-result"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch CoinDesk RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Cointelegraph RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Decrypt RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch CoinDesk RSS": {
+      "main": [
+        [
+          {
+            "node": "Parse & Filter for Vitalik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Cointelegraph RSS": {
+      "main": [
+        [
+          {
+            "node": "Parse & Filter for Vitalik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Decrypt RSS": {
+      "main": [
+        [
+          {
+            "node": "Parse & Filter for Vitalik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Filter for Vitalik": {
+      "main": [
+        [
+          {
+            "node": "Get Vitalik Persona ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Vitalik Persona ID": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid Items": {
+      "main": [
+        [
+          {
+            "node": "Save News Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save News Articles": {
+      "main": [
+        [
+          {
+            "node": "Log Fetch Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "collector"
+    },
+    {
+      "name": "vitalik"
+    },
+    {
+      "name": "news"
+    }
+  ]
+}
