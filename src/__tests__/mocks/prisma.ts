@@ -1,0 +1,17 @@
+import { vi } from 'vitest'
+import { prisma } from '@/lib/prisma'
+
+export const mockPrisma = vi.mocked(prisma, true)
+
+export function resetPrismaMocks() {
+  vi.mocked(prisma.persona.findUnique).mockReset()
+  vi.mocked(prisma.persona.findMany).mockReset()
+  vi.mocked(prisma.conversation.findFirst).mockReset()
+  vi.mocked(prisma.conversation.findMany).mockReset()
+  vi.mocked(prisma.conversation.create).mockReset()
+  vi.mocked(prisma.conversation.update).mockReset()
+  vi.mocked(prisma.conversation.delete).mockReset()
+  vi.mocked(prisma.message.create).mockReset()
+  vi.mocked(prisma.user.findUnique).mockReset()
+  vi.mocked(prisma.user.create).mockReset()
+}
