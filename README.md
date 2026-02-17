@@ -10,7 +10,7 @@ Talk With Legends는 유명 인물(기업가, 투자자, 기술 리더 등)의 �
 
 | 분류 | 기술 |
 |------|------|
-| Frontend | Next.js 16 (App Router), TypeScript, Tailwind CSS |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 |
 | Backend | Next.js API Routes |
 | AI | Anthropic Claude API (Chat), OpenAI (Embeddings) |
 | Database | Supabase PostgreSQL + pgvector |
@@ -34,7 +34,7 @@ Talk With Legends는 유명 인물(기업가, 투자자, 기술 리더 등)의 �
 - [x] 대화 기록 저장 및 관리
 - [x] 파일 업로드 (이미지/문서)
 
-### Phase 2 (진행 중) - 페르소나 시스템
+### Phase 2 (완료) - 페르소나 시스템
 - [x] 데이터베이스 스키마 확장 (v2.0.0)
 - [x] n8n 데이터 수집 워크플로우
   - YouTube 트랜스크립트 수집
@@ -46,9 +46,21 @@ Talk With Legends는 유명 인물(기업가, 투자자, 기술 리더 등)의 �
 - [x] 특성 추출 (Claude API)
 - [x] RAG 검색 API
 - [x] 페르소나 API
-- [ ] 페르소나 선택 UI
+- [x] 페르소나 선택 UI
+
+### Phase 3 (진행 중) - UI/UX 고도화 & 크립토 제품화
+- [x] 다크모드 지원 (클래스 기반 `.dark`)
+- [x] 크립토 프로토콜 랜딩 페이지 (`/protocol`)
+- [x] Agentation 도구 추가
+- [ ] 크립토 프로토콜 B2B 제품화
+- [ ] Token-gated 접근 (Privy 지갑 인증)
+- [ ] 임베드 위젯 SDK
 
 자세한 로드맵은 [ROADMAP.md](./ROADMAP.md)를 참조하세요.
+
+### 관련 문서
+- [CLAUDE.md](./CLAUDE.md) - 프로젝트 가이드라인
+- [CRYPTO-PRODUCT-PLAN.md](./docs/CRYPTO-PRODUCT-PLAN.md) - 크립토 제품화 계획
 
 ## 시작하기
 
@@ -157,8 +169,20 @@ talk-with/
 │   │   │   ├── rag/          # RAG 검색 API
 │   │   │   └── ...
 │   │   ├── chat/             # 채팅 페이지
-│   │   └── login/            # 로그인 페이지
-│   ├── components/           # UI 컴포넌트
+│   │   ├── login/            # 로그인 페이지
+│   │   └── protocol/         # 크립토 프로토콜 랜딩 페이지
+│   │       ├── page.tsx      # 메인 랜딩 페이지
+│   │       └── data.ts       # 타입 & 상수 데이터
+│   ├── components/
+│   │   ├── chat/             # 채팅 UI 컴포넌트
+│   │   ├── dev/              # 개발 도구 컴포넌트
+│   │   ├── layout/           # 레이아웃 컴포넌트
+│   │   ├── persona/          # 페르소나 선택 컴포넌트
+│   │   └── protocol/         # 프로토콜 랜딩 컴포넌트
+│   │       ├── reveal.tsx    # 스크롤 애니메이션
+│   │       ├── hero-section.tsx
+│   │       ├── chat-demo-section.tsx
+│   │       └── dashboard-section.tsx
 │   ├── hooks/                # 커스텀 훅
 │   ├── lib/
 │   │   ├── anthropic.ts      # Claude 클라이언트
@@ -166,14 +190,17 @@ talk-with/
 │   │   ├── prompt-generator.ts # 페르소나 프롬프트 생성
 │   │   └── ...
 │   └── types/                # TypeScript 타입
+├── public/
+│   └── logos/                # 프로토콜 로고 & 인물 사진
 ├── prisma/
 │   ├── schema.prisma         # DB 스키마 (v2.0.0)
 │   ├── seed.ts               # 시드 데이터
 │   └── migrations/           # SQL 마이그레이션
+├── scripts/                  # 유틸리티 스크립트
 ├── n8n/
 │   ├── workflows/            # n8n 워크플로우
 │   └── docker-compose.yml
-└── docs/                     # 문서
+└── docs/                     # 기획 & 설계 문서
 ```
 
 ## 데이터 파이프라인 아키텍처

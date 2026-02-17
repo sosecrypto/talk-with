@@ -1,61 +1,13 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
-
-/* ─────────────────── DATA ─────────────────── */
-
-const projects = [
-  { name: 'Ethereum', symbol: 'ETH', color: '#627EEA', ceo: 'Vitalik Buterin', title: 'Co-Founder', avatar: 'VB', logo: '/logos/eth.png', photo: '/logos/people/vitalik.webp' },
-  { name: 'Uniswap', symbol: 'UNI', color: '#FF007A', ceo: 'Hayden Adams', title: 'Founder & CEO', avatar: 'HA', logo: '/logos/uni.png', photo: '/logos/people/hayden.webp' },
-  { name: 'Aave', symbol: 'AAVE', color: '#B6509E', ceo: 'Stani Kulechov', title: 'Founder & CEO', avatar: 'SK', logo: '/logos/aave.png', photo: '/logos/people/stani.webp' },
-  { name: 'Arbitrum', symbol: 'ARB', color: '#28A0F0', ceo: 'Steven Goldfeder', title: 'Co-Founder & CEO', avatar: 'SG', logo: '/logos/arb.png', photo: '/logos/people/steven.webp' },
-  { name: 'Chainlink', symbol: 'LINK', color: '#375BD2', ceo: 'Sergey Nazarov', title: 'Co-Founder', avatar: 'SN', logo: '/logos/link.png', photo: '/logos/people/sergey.webp' },
-  { name: 'EigenLayer', symbol: 'EIGEN', color: '#1E0555', ceo: 'Sreeram Kannan', title: 'Founder', avatar: 'SK', logo: '/logos/eigen.png', photo: '/logos/people/sreeram.webp' },
-]
-
-const uniswapChat = [
-  { role: 'user' as const, text: 'What makes Uniswap v4 Hooks different from v3?' },
-  { role: 'ai' as const, text: 'Hooks are smart contracts attached to individual pools that execute custom logic at key points — before/after swaps, liquidity changes. This enables native limit orders, dynamic fees, and on-chain oracles.', source: 'Uniswap v4 Whitepaper, Section 3.2' },
-  { role: 'user' as const, text: 'How does this benefit regular users?' },
-  { role: 'ai' as const, text: 'Lower gas costs through singleton architecture, customizable fee tiers per pool, and access to TWAP oracles and limit orders natively — all without leaving Uniswap.', source: 'Hayden Adams, ETHDenver Talk' },
-]
-
-const arbitrumChat = [
-  { role: 'user' as const, text: 'How does Arbitrum Stylus change smart contract development?' },
-  { role: 'ai' as const, text: 'Stylus lets developers write smart contracts in Rust, C, and C++ alongside Solidity. It compiles to WASM, achieving 10-100x computational savings while maintaining full EVM interoperability.', source: 'Arbitrum Stylus Documentation' },
-  { role: 'user' as const, text: 'Is it compatible with existing Ethereum tooling?' },
-  { role: 'ai' as const, text: 'Yes — Stylus contracts can call and be called by Solidity contracts seamlessly. Existing Ethereum tooling works as-is. It\'s additive, not a replacement.', source: 'Steven Goldfeder, ETHGlobal Talk' },
-]
-
-const features = [
-  { icon: '01', title: 'RAG-Powered Answers', desc: 'Whitepaper, docs, AMA, blog \u2014 all official sources chunked, embedded, and retrieved in real-time. Every answer cites its source.', size: 'large' },
-  { icon: '02', title: 'CEO Persona', desc: 'AI speaks in the founder\'s voice and perspective. Trained on interviews, Twitter threads, and conference talks.', size: 'small' },
-  { icon: '03', title: 'Token-Gated Access', desc: 'Privy wallet auth with token/NFT gating. Reward holders with exclusive access and premium features.', size: 'small' },
-  { icon: '04', title: 'Global by Default', desc: '50+ languages. AI detects and responds in the user\'s language automatically. No translation team needed.', size: 'medium' },
-  { icon: '05', title: 'Community Intelligence', desc: 'Real-time dashboard showing question trends, sentiment analysis, unanswered issues, and regional activity.', size: 'medium' },
-  { icon: '06', title: 'Embed Everywhere', desc: 'Drop a widget on your website, connect to Discord and Telegram. Your AI goes where your community lives.', size: 'large' },
-]
-
-const amaPhases = [
-  { phase: 'Before', label: 'Pre-AMA', color: '#7C3AED', desc: 'Community submits questions. AI provides preliminary answers from existing knowledge. Token-weighted voting surfaces top questions.' },
-  { phase: 'During', label: 'Live AMA', color: '#F43F5E', desc: 'CEO answers top-voted questions. Every response is instantly added to the AI\'s knowledge base. AI handles overflow Q&A in parallel.' },
-  { phase: 'After', label: 'Post-AMA', color: '#10B981', desc: 'The AMA never ends. AI continues answering with all CEO responses included. New questions get answered using AMA context. Forever.' },
-]
+import { projects, uniswapChat, arbitrumChat, features, amaPhases, type Project } from './data'
+import { Reveal } from '@/components/protocol/reveal'
+import { DashboardSection } from '@/components/protocol/dashboard-section'
+import { ChatDemoSection } from '@/components/protocol/chat-demo-section'
+import { HeroSection } from '@/components/protocol/hero-section'
 
 /* ─────────────────── HOOKS ─────────────────── */
-
-function useInView(threshold = 0.1) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [isInView, setIsInView] = useState(false)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setIsInView(true) }, { threshold })
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [threshold])
-  return { ref, isInView }
-}
 
 function useMousePosition() {
   const [pos, setPos] = useState({ x: 0, y: 0 })
@@ -68,23 +20,6 @@ function useMousePosition() {
 }
 
 /* ─────────────────── COMPONENTS ─────────────────── */
-
-function Reveal({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
-  const { ref, isInView } = useInView()
-  return (
-    <div
-      ref={ref}
-      className={className}
-      style={{
-        transform: isInView ? 'translateY(0)' : 'translateY(40px)',
-        opacity: isInView ? 1 : 0,
-        transition: `all 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
-      }}
-    >
-      {children}
-    </div>
-  )
-}
 
 function Marquee({ children, speed = 30, reverse = false }: { children: React.ReactNode; speed?: number; reverse?: boolean }) {
   return (
@@ -102,7 +37,7 @@ function Marquee({ children, speed = 30, reverse = false }: { children: React.Re
   )
 }
 
-function LogoIcon({ project, size = 32 }: { project: typeof projects[0]; size?: number }) {
+function LogoIcon({ project, size = 32 }: { project: Project; size?: number }) {
   if (project.logo) {
     return (
       <div className="rounded-full overflow-hidden flex items-center justify-center bg-white flex-shrink-0" style={{ width: size, height: size }}>
@@ -117,7 +52,7 @@ function LogoIcon({ project, size = 32 }: { project: typeof projects[0]; size?: 
   )
 }
 
-function LogoPill({ project }: { project: typeof projects[0] }) {
+function LogoPill({ project }: { project: Project }) {
   return (
     <div className="inline-flex items-center gap-2.5 px-4 py-2.5 mx-2 bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm rounded-full border border-black/[0.06] dark:border-white/[0.08] shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_8px_30px_rgba(255,255,255,0.04)] hover:-translate-y-1 transition-all duration-500 cursor-default select-none flex-shrink-0">
       <LogoIcon project={project} size={24} />
@@ -126,7 +61,7 @@ function LogoPill({ project }: { project: typeof projects[0] }) {
   )
 }
 
-function ProjectCard({ project, index }: { project: typeof projects[0]; index: number }) {
+function ProjectCard({ project, index }: { project: Project; index: number }) {
   const [hovered, setHovered] = useState(false)
   return (
     <Reveal delay={index * 100}>
@@ -173,48 +108,6 @@ function ProjectCard({ project, index }: { project: typeof projects[0]; index: n
         </div>
       </div>
     </Reveal>
-  )
-}
-
-function ChatBubble({ msg, index, visible, project }: { msg: typeof uniswapChat[0]; index: number; visible: boolean; project: typeof projects[0] }) {
-  return (
-    <div
-      className="transition-all duration-700"
-      style={{
-        transform: visible ? 'translateY(0)' : 'translateY(24px)',
-        opacity: visible ? 1 : 0,
-        transitionDelay: `${index * 150}ms`,
-      }}
-    >
-      {msg.role === 'user' ? (
-        <div className="flex justify-end mb-3">
-          <div className="max-w-[80%] px-4 py-3 bg-[#1a1a1a] dark:bg-white text-white dark:text-[#1a1a1a] rounded-[16px] rounded-br-[4px] text-[13px] leading-[1.6]">
-            {msg.text}
-          </div>
-        </div>
-      ) : (
-        <div className="flex gap-2.5 mb-3">
-          <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 mt-1">
-            {project.photo ? (
-              <img src={project.photo} alt={project.ceo} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-white text-[9px] font-bold" style={{ backgroundColor: project.color }}>{project.avatar}</div>
-            )}
-          </div>
-          <div className="max-w-[85%]">
-            <div className="px-4 py-3 bg-[#f7f5f2] dark:bg-white/[0.06] rounded-[16px] rounded-bl-[4px] text-[13px] leading-[1.6] text-[#333] dark:text-[#ccc]">
-              {msg.text}
-            </div>
-            {'source' in msg && msg.source && (
-              <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-[#aaa] dark:text-[#777] bg-white dark:bg-white/[0.04] px-2.5 py-1 rounded-full border border-black/[0.04] dark:border-white/[0.06]">
-                <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-                {msg.source}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
   )
 }
 
@@ -318,100 +211,7 @@ export default function ProtocolLanding() {
       </nav>
 
       {/* ═══════════════ HERO ═══════════════ */}
-      <section ref={heroRef} className="relative min-h-screen flex items-center justify-center px-6 pt-24 pb-32 overflow-hidden">
-        {/* Gradient Mesh */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] rounded-full opacity-[0.07] dark:opacity-[0.15]" style={{ background: 'radial-gradient(circle, #7C3AED 0%, transparent 70%)', ...parallax(0.02) }} />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full opacity-[0.05] dark:opacity-[0.12]" style={{ background: 'radial-gradient(circle, #F43F5E 0%, transparent 70%)', ...parallax(-0.015) }} />
-          <div className="absolute top-[30%] right-[20%] w-[40vw] h-[40vw] rounded-full opacity-[0.04] dark:opacity-[0.1]" style={{ background: 'radial-gradient(circle, #3B82F6 0%, transparent 70%)', ...parallax(0.01) }} />
-        </div>
-
-        {/* Floating Orbs */}
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute rounded-full"
-              style={{
-                width: `${20 + i * 12}px`,
-                height: `${20 + i * 12}px`,
-                top: `${15 + i * 14}%`,
-                left: `${8 + i * 16}%`,
-                background: `linear-gradient(135deg, ${['#7C3AED', '#F43F5E', '#3B82F6', '#10B981', '#F59E0B', '#EC4899'][i]}30, transparent)`,
-                animation: `float-orb ${8 + i * 2}s ease-in-out infinite`,
-                animationDelay: `${i * -1.5}s`,
-                ...parallax(0.03 + i * 0.005),
-              }}
-            />
-          ))}
-        </div>
-
-        <div className="relative z-10 max-w-5xl mx-auto text-center">
-          {/* Eyebrow */}
-          <div className={`transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 dark:bg-white/[0.06] backdrop-blur-xl border border-black/[0.06] dark:border-white/[0.08] shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#10B981]" />
-              </span>
-              <span className="text-[13px] font-medium text-[#666] dark:text-[#aaa] tracking-wide">Web3 AI Communication Layer</span>
-            </div>
-          </div>
-
-          {/* Headline */}
-          <h1 className={`mt-10 transition-all duration-1000 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <span className="block text-[clamp(2.8rem,7vw,5.5rem)] font-black tracking-[-0.04em] leading-[1.05] text-[#1a1a1a] dark:text-white">
-              Your Protocol Speaks.
-            </span>
-            <span className="block text-[clamp(2.8rem,7vw,5.5rem)] font-black tracking-[-0.04em] leading-[1.15] pb-2 bg-gradient-to-r from-[#7C3AED] via-[#A855F7] to-[#F43F5E] bg-clip-text text-transparent" style={{ backgroundSize: '200% 200%', animation: 'gradient-shift 4s ease infinite', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              24/7. Every Language.
-            </span>
-          </h1>
-
-          {/* Subheadline */}
-          <p className={`mt-8 text-[clamp(1rem,2vw,1.25rem)] text-[#777] dark:text-[#888] max-w-2xl mx-auto leading-[1.7] font-normal transition-all duration-1000 delay-400 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-            AI trained on your project&apos;s official docs answers every community question
-            <br className="hidden sm:block" />
-            instantly &mdash; in any language, with source citations, around the clock.
-          </p>
-
-          {/* CTA */}
-          <div className={`mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 transition-all duration-1000 delay-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-            <button className="group relative px-8 py-4 bg-[#1a1a1a] dark:bg-white text-white dark:text-[#1a1a1a] font-semibold rounded-2xl overflow-hidden transition-all duration-500 hover:shadow-[0_20px_60px_rgba(124,58,237,0.25)] hover:scale-[1.02]">
-              <span className="absolute inset-0 bg-gradient-to-r from-[#7C3AED] to-[#F43F5E] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <span className="relative flex items-center gap-2.5 text-[15px]">
-                Get Early Access
-                <svg className="w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-              </span>
-            </button>
-            <button className="px-8 py-4 text-[#777] dark:text-[#aaa] font-semibold text-[15px] rounded-2xl border border-black/[0.08] dark:border-white/[0.1] hover:bg-white dark:hover:bg-white/[0.06] hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:border-black/[0.12] dark:hover:border-white/[0.15] transition-all duration-500">
-              Watch Demo
-            </button>
-          </div>
-
-          {/* Stats */}
-          <div className={`mt-20 grid grid-cols-4 gap-6 sm:gap-10 max-w-2xl mx-auto transition-all duration-1000 delay-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-            {[
-              { val: '24/7', label: 'Always On' },
-              { val: '50+', label: 'Languages' },
-              { val: '<2s', label: 'Response' },
-              { val: '90%', label: 'Cost Cut' },
-            ].map((s) => (
-              <div key={s.label} className="text-center">
-                <div className="text-4xl sm:text-5xl md:text-6xl font-black tracking-[-0.03em] bg-gradient-to-b from-[#1a1a1a] to-[#1a1a1a]/60 dark:from-white dark:to-white/50 bg-clip-text text-transparent">{s.val}</div>
-                <div className="text-[11px] sm:text-[12px] font-semibold text-[#aaa] dark:text-[#666] uppercase tracking-[0.12em] mt-2">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Scroll indicator */}
-        <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 transition-all duration-1000 delay-1000 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
-          <div className="w-6 h-10 rounded-full border-2 border-[#ddd] dark:border-[#444] flex items-start justify-center p-1.5">
-            <div className="w-1 h-2.5 rounded-full bg-[#bbb] dark:bg-[#666] animate-bounce" />
-          </div>
-        </div>
-      </section>
+      <HeroSection mounted={mounted} parallax={parallax} heroRef={heroRef} />
 
       {/* ═══════════════ MARQUEE ═══════════════ */}
       <section className="py-6 border-y border-black/[0.04] dark:border-white/[0.04]">
@@ -454,116 +254,7 @@ export default function ProtocolLanding() {
       </section>
 
       {/* ═══════════════ CHAT DEMO ═══════════════ */}
-      <section className="py-32 px-6 bg-gradient-to-b from-[#FAF9F7] to-[#F3F1EE] dark:from-[#0a0a0a] dark:to-[#111]" ref={chatRef}>
-        <div className="max-w-6xl mx-auto">
-          <Reveal>
-            <div className="text-center mb-16">
-              <p className="text-[13px] font-semibold text-[#7C3AED] uppercase tracking-[0.15em] mb-5">Live Demo</p>
-              <h2 className="text-[clamp(2rem,4vw,3.2rem)] font-black tracking-[-0.03em] leading-[1.15]">
-                Every answer. Every source. Every language.
-              </h2>
-            </div>
-          </Reveal>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Uniswap Chat */}
-            {(() => { const p = projects[1]; return (
-            <Reveal delay={100}>
-              <div className="bg-white dark:bg-[#141414] rounded-[24px] border border-black/[0.06] dark:border-white/[0.06] shadow-[0_30px_80px_rgba(0,0,0,0.06)] dark:shadow-[0_30px_80px_rgba(0,0,0,0.4)] overflow-hidden">
-                <div className="px-5 py-4 border-b border-black/[0.04] dark:border-white/[0.04] flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0">
-                    <img src={p.photo!} alt={p.ceo} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[14px] font-bold tracking-tight">{p.ceo}</div>
-                    <div className="text-[11px] text-[#aaa] dark:text-[#666]">{p.title}, {p.name}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-white dark:bg-[#1a1a1a] border border-black/[0.06] dark:border-white/[0.08] flex items-center justify-center overflow-hidden flex-shrink-0">
-                      <img src={p.logo} alt={p.symbol} className="w-5 h-5 object-contain" />
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute h-full w-full rounded-full bg-[#10B981] opacity-75" /><span className="relative rounded-full h-1.5 w-1.5 bg-[#10B981]" /></span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-5 min-h-[340px]">
-                  {uniswapChat.map((msg, i) => (
-                    <ChatBubble key={i} msg={msg} index={i} visible={i <= chatStep} project={p} />
-                  ))}
-                  {chatStep >= 0 && chatStep < uniswapChat.length - 1 && (
-                    <div className="flex gap-2.5 mt-3">
-                      <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0"><img src={p.photo!} alt={p.ceo} className="w-full h-full object-cover" /></div>
-                      <div className="px-4 py-3 bg-[#f7f5f2] dark:bg-white/[0.06] rounded-[16px] rounded-bl-[4px] inline-flex gap-1.5 items-center">
-                        <span className="w-1.5 h-1.5 bg-[#bbb] dark:bg-[#666] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="w-1.5 h-1.5 bg-[#bbb] dark:bg-[#666] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="w-1.5 h-1.5 bg-[#bbb] dark:bg-[#666] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="px-5 pb-5">
-                  <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f5f2] dark:bg-white/[0.04] rounded-xl border border-black/[0.04] dark:border-white/[0.06]">
-                    <span className="text-[13px] text-[#bbb] dark:text-[#555] flex-1">Ask about {p.name}...</span>
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: p.color }}>
-                      <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" /></svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-            )})()}
-
-            {/* Arbitrum Chat */}
-            {(() => { const p = projects[3]; return (
-            <Reveal delay={300}>
-              <div className="bg-white dark:bg-[#141414] rounded-[24px] border border-black/[0.06] dark:border-white/[0.06] shadow-[0_30px_80px_rgba(0,0,0,0.06)] dark:shadow-[0_30px_80px_rgba(0,0,0,0.4)] overflow-hidden">
-                <div className="px-5 py-4 border-b border-black/[0.04] dark:border-white/[0.04] flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0">
-                    <img src={p.photo!} alt={p.ceo} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[14px] font-bold tracking-tight">{p.ceo}</div>
-                    <div className="text-[11px] text-[#aaa] dark:text-[#666]">{p.title}, {p.name}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-white dark:bg-[#1a1a1a] border border-black/[0.06] dark:border-white/[0.08] flex items-center justify-center overflow-hidden flex-shrink-0">
-                      <img src={p.logo} alt={p.symbol} className="w-5 h-5 object-contain" />
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute h-full w-full rounded-full bg-[#10B981] opacity-75" /><span className="relative rounded-full h-1.5 w-1.5 bg-[#10B981]" /></span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-5 min-h-[340px]">
-                  {arbitrumChat.map((msg, i) => (
-                    <ChatBubble key={i} msg={msg} index={i} visible={i <= chatStep} project={p} />
-                  ))}
-                  {chatStep >= 0 && chatStep < arbitrumChat.length - 1 && (
-                    <div className="flex gap-2.5 mt-3">
-                      <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0"><img src={p.photo!} alt={p.ceo} className="w-full h-full object-cover" /></div>
-                      <div className="px-4 py-3 bg-[#f7f5f2] dark:bg-white/[0.06] rounded-[16px] rounded-bl-[4px] inline-flex gap-1.5 items-center">
-                        <span className="w-1.5 h-1.5 bg-[#bbb] dark:bg-[#666] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="w-1.5 h-1.5 bg-[#bbb] dark:bg-[#666] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="w-1.5 h-1.5 bg-[#bbb] dark:bg-[#666] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="px-5 pb-5">
-                  <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f5f2] dark:bg-white/[0.04] rounded-xl border border-black/[0.04] dark:border-white/[0.06]">
-                    <span className="text-[13px] text-[#bbb] dark:text-[#555] flex-1">Ask about {p.name}...</span>
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: p.color }}>
-                      <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" /></svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-            )})()}
-          </div>
-        </div>
-      </section>
+      <ChatDemoSection chatStep={chatStep} chatRef={chatRef} />
 
       {/* ═══════════════ PERSONAS ═══════════════ */}
       <section className="py-32 px-6" id="personas">
@@ -680,190 +371,7 @@ export default function ProtocolLanding() {
       </section>
 
       {/* ═══════════════ DASHBOARD ═══════════════ */}
-      <section className="py-32 px-6 bg-[#0F0F0F] text-white relative overflow-hidden">
-        {/* Subtle grid bg */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-        <div className="absolute top-0 left-[20%] w-[40vw] h-[40vw] rounded-full opacity-[0.06]" style={{ background: 'radial-gradient(circle, #7C3AED 0%, transparent 70%)' }} />
-
-        <div className="relative max-w-6xl mx-auto">
-          <Reveal>
-            <div className="text-center mb-16">
-              <p className="text-[13px] font-semibold text-[#A855F7] uppercase tracking-[0.15em] mb-5">Intelligence</p>
-              <h2 className="text-[clamp(2rem,4vw,3.2rem)] font-black tracking-[-0.03em] leading-[1.15]">
-                Your community is a goldmine of data.
-              </h2>
-              <p className="mt-5 text-[17px] text-[#666] max-w-xl mx-auto leading-[1.7]">
-                Every question becomes an insight. Every trend becomes a strategy.
-              </p>
-            </div>
-          </Reveal>
-
-          {/* Bento Dashboard Grid */}
-          <div className="grid md:grid-cols-12 gap-4">
-
-            {/* Top Stats Row */}
-            <Reveal delay={0} className="md:col-span-3">
-              <div className="bg-white/[0.04] backdrop-blur-sm rounded-[20px] border border-white/[0.06] p-6 hover:bg-white/[0.08] transition-all duration-500 h-full">
-                <div className="text-[11px] font-bold text-[#666] uppercase tracking-[0.15em] mb-3">Total Questions</div>
-                <div className="text-4xl font-black text-white">12,847</div>
-                <div className="flex items-center gap-1 mt-2">
-                  <svg className="w-3.5 h-3.5 text-[#10B981]" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
-                  <span className="text-[12px] font-semibold text-[#10B981]">+23% this week</span>
-                </div>
-              </div>
-            </Reveal>
-            <Reveal delay={80} className="md:col-span-3">
-              <div className="bg-white/[0.04] backdrop-blur-sm rounded-[20px] border border-white/[0.06] p-6 hover:bg-white/[0.08] transition-all duration-500 h-full">
-                <div className="text-[11px] font-bold text-[#666] uppercase tracking-[0.15em] mb-3">Auto-Resolved</div>
-                <div className="text-4xl font-black text-[#10B981]">94.2%</div>
-                <div className="mt-2 h-[4px] bg-white/[0.06] rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-[#10B981]" style={{ width: '94.2%' }} />
-                </div>
-              </div>
-            </Reveal>
-            <Reveal delay={160} className="md:col-span-3">
-              <div className="bg-white/[0.04] backdrop-blur-sm rounded-[20px] border border-white/[0.06] p-6 hover:bg-white/[0.08] transition-all duration-500 h-full">
-                <div className="text-[11px] font-bold text-[#666] uppercase tracking-[0.15em] mb-3">Sentiment</div>
-                <div className="flex items-end gap-2 mt-1">
-                  <span className="text-3xl font-black text-[#10B981]">62%</span>
-                  <span className="text-[13px] text-[#666] mb-1">positive</span>
-                </div>
-                <div className="flex gap-1 mt-3">
-                  {[62, 28, 10].map((v, i) => (
-                    <div key={i} className="h-[6px] rounded-full" style={{ width: `${v}%`, backgroundColor: ['#10B981', '#F59E0B', '#EF4444'][i] }} />
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-            <Reveal delay={240} className="md:col-span-3">
-              <div className="bg-white/[0.04] backdrop-blur-sm rounded-[20px] border border-white/[0.06] p-6 hover:bg-white/[0.08] transition-all duration-500 h-full">
-                <div className="text-[11px] font-bold text-[#666] uppercase tracking-[0.15em] mb-3">Active Regions</div>
-                <div className="text-4xl font-black text-white">23</div>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {['KR 35%', 'US 25%', 'JP 15%', 'EU 12%'].map((r) => (
-                    <span key={r} className="text-[10px] font-medium text-[#888] bg-white/[0.06] px-2 py-0.5 rounded-full">{r}</span>
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-
-            {/* Question Trends Chart */}
-            <Reveal delay={100} className="md:col-span-7">
-              <div className="bg-white/[0.04] backdrop-blur-sm rounded-[20px] border border-white/[0.06] p-6 hover:bg-white/[0.08] transition-all duration-500 h-full">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="text-[11px] font-bold text-[#666] uppercase tracking-[0.15em]">Question Trends</div>
-                  <div className="flex gap-2">
-                    {['1W', '1M', '3M'].map((t, i) => (
-                      <button key={t} className={`text-[11px] font-semibold px-3 py-1 rounded-lg ${i === 0 ? 'bg-[#7C3AED] text-white' : 'text-[#666] hover:text-white'} transition-colors`}>{t}</button>
-                    ))}
-                  </div>
-                </div>
-                {/* Mini bar chart */}
-                <div className="flex items-end gap-1.5 h-[140px]">
-                  {[45, 62, 38, 71, 55, 89, 67, 92, 78, 85, 95, 88, 102, 110].map((v, i) => {
-                    const h = Math.round((v / 110) * 100)
-                    return (
-                      <div key={i} className="flex-1 group/bar relative cursor-pointer h-full flex items-end">
-                        {/* Tooltip */}
-                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                          <div className="bg-white text-[#1a1a1a] text-[10px] font-bold px-2 py-1 rounded-md shadow-lg whitespace-nowrap">{v}</div>
-                        </div>
-                        <div
-                          className="w-full rounded-t-md transition-all duration-700 hover:opacity-90"
-                          style={{
-                            height: `${h}%`,
-                            background: i >= 12
-                              ? 'linear-gradient(180deg, #7C3AED, #A855F7)'
-                              : i >= 10
-                                ? 'linear-gradient(180deg, rgba(124,58,237,0.5), rgba(168,85,247,0.3))'
-                                : 'linear-gradient(180deg, rgba(255,255,255,0.3), rgba(255,255,255,0.12))',
-                          }}
-                        />
-                      </div>
-                    )
-                  })}
-                </div>
-                <div className="flex justify-between mt-3 text-[10px] text-[#555]">
-                  <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-                </div>
-              </div>
-            </Reveal>
-
-            {/* Top Categories */}
-            <Reveal delay={200} className="md:col-span-5">
-              <div className="bg-white/[0.04] backdrop-blur-sm rounded-[20px] border border-white/[0.06] p-6 hover:bg-white/[0.08] transition-all duration-500 h-full">
-                <div className="text-[11px] font-bold text-[#666] uppercase tracking-[0.15em] mb-5">Top Categories</div>
-                <div className="space-y-4">
-                  {[
-                    { topic: 'Tokenomics', pct: 32, color: '#7C3AED', delta: '+5%' },
-                    { topic: 'Roadmap', pct: 28, color: '#A855F7', delta: '+12%' },
-                    { topic: 'Technical', pct: 20, color: '#3B82F6', delta: '-3%' },
-                    { topic: 'Security', pct: 12, color: '#F59E0B', delta: '+8%' },
-                    { topic: 'Partnerships', pct: 8, color: '#10B981', delta: '+2%' },
-                  ].map((item) => (
-                    <div key={item.topic}>
-                      <div className="flex justify-between text-[13px] mb-1.5">
-                        <span className="font-semibold text-[#ccc]">{item.topic}</span>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[11px] font-medium ${item.delta.startsWith('+') ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>{item.delta}</span>
-                          <span className="font-mono text-[#666] text-[12px]">{item.pct}%</span>
-                        </div>
-                      </div>
-                      <div className="h-[5px] bg-white/[0.06] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${item.pct}%`, backgroundColor: item.color }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-
-            {/* Hot Questions */}
-            <Reveal delay={150} className="md:col-span-6">
-              <div className="bg-gradient-to-br from-[#F59E0B]/10 to-transparent backdrop-blur-sm rounded-[20px] border border-[#F59E0B]/20 p-6 h-full">
-                <div className="flex items-center gap-2 mb-5">
-                  <div className="w-2 h-2 rounded-full bg-[#F59E0B] animate-pulse" />
-                  <div className="text-[11px] font-bold text-[#F59E0B] uppercase tracking-[0.15em]">Needs Your Attention</div>
-                </div>
-                <div className="space-y-2.5">
-                  {[
-                    { q: 'v2 migration timeline?', n: 87, trend: 'rising' },
-                    { q: 'Token unlock schedule change?', n: 64, trend: 'rising' },
-                    { q: 'L2 expansion plans?', n: 51, trend: 'stable' },
-                    { q: 'New partnership announcements?', n: 38, trend: 'new' },
-                  ].map((item) => (
-                    <div key={item.q} className="flex items-center gap-3 p-3 bg-white/[0.04] rounded-xl border border-white/[0.04] hover:bg-white/[0.08] transition-all">
-                      <span className="text-[12px] font-bold text-[#F59E0B] bg-[#F59E0B]/15 px-2.5 py-1 rounded-lg font-mono flex-shrink-0">{item.n}x</span>
-                      <span className="text-[13px] text-[#aaa] flex-1">{item.q}</span>
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${item.trend === 'rising' ? 'text-[#EF4444] bg-[#EF4444]/10' : item.trend === 'new' ? 'text-[#3B82F6] bg-[#3B82F6]/10' : 'text-[#666] bg-white/[0.06]'}`}>{item.trend}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-
-            {/* Weekly Report Preview */}
-            <Reveal delay={250} className="md:col-span-6">
-              <div className="bg-white/[0.04] backdrop-blur-sm rounded-[20px] border border-white/[0.06] p-6 h-full hover:bg-white/[0.08] transition-all duration-500">
-                <div className="flex items-center justify-between mb-5">
-                  <div className="text-[11px] font-bold text-[#888] uppercase tracking-[0.15em]">Auto-Generated Weekly Report</div>
-                  <span className="text-[10px] font-medium text-[#555] bg-white/[0.06] px-3 py-1 rounded-full">Feb 3 - Feb 9</span>
-                </div>
-                <div className="space-y-3 text-[13px] text-[#888] leading-[1.7]">
-                  <div className="flex gap-2"><span className="text-[#A855F7]">&#x2022;</span> Community sentiment improved by <span className="text-white font-semibold">+8%</span> following v2 announcement</div>
-                  <div className="flex gap-2"><span className="text-[#F59E0B]">&#x2022;</span> <span className="text-[#F59E0B] font-semibold">87 unanswered questions</span> about migration timeline detected</div>
-                  <div className="flex gap-2"><span className="text-[#10B981]">&#x2022;</span> Korean community grew <span className="text-white font-semibold">+35%</span> &mdash; consider Korean AMA session</div>
-                  <div className="flex gap-2"><span className="text-[#3B82F6]">&#x2022;</span> Top new topic: <span className="text-white font-semibold">&ldquo;L2 expansion&rdquo;</span> appeared in 12% of conversations</div>
-                </div>
-                <button className="mt-5 text-[12px] font-semibold text-[#888] hover:text-white transition-colors flex items-center gap-1">
-                  View Full Report
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                </button>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
+      <DashboardSection />
 
       {/* ═══════════════ HOW IT WORKS ═══════════════ */}
       <section className="py-32 px-6 bg-[#F3F1EE] dark:bg-[#111]">
