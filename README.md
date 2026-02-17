@@ -48,19 +48,14 @@ Talk With Legends는 유명 인물(기업가, 투자자, 기술 리더 등)의 �
 - [x] 페르소나 API
 - [x] 페르소나 선택 UI
 
-### Phase 3 (진행 중) - UI/UX 고도화 & 크립토 제품화
+### Phase 3 (진행 중) - UI/UX 고도화
 - [x] 다크모드 지원 (클래스 기반 `.dark`)
-- [x] 크립토 프로토콜 랜딩 페이지 (`/protocol`)
 - [x] Agentation 도구 추가
-- [ ] 크립토 프로토콜 B2B 제품화
-- [ ] Token-gated 접근 (Privy 지갑 인증)
-- [ ] 임베드 위젯 SDK
 
 자세한 로드맵은 [ROADMAP.md](./ROADMAP.md)를 참조하세요.
 
 ### 관련 문서
 - [CLAUDE.md](./CLAUDE.md) - 프로젝트 가이드라인
-- [CRYPTO-PRODUCT-PLAN.md](./docs/CRYPTO-PRODUCT-PLAN.md) - 크립토 제품화 계획
 
 ## 시작하기
 
@@ -169,20 +164,12 @@ talk-with/
 │   │   │   ├── rag/          # RAG 검색 API
 │   │   │   └── ...
 │   │   ├── chat/             # 채팅 페이지
-│   │   ├── login/            # 로그인 페이지
-│   │   └── protocol/         # 크립토 프로토콜 랜딩 페이지
-│   │       ├── page.tsx      # 메인 랜딩 페이지
-│   │       └── data.ts       # 타입 & 상수 데이터
+│   │   └── login/            # 로그인 페이지
 │   ├── components/
 │   │   ├── chat/             # 채팅 UI 컴포넌트
 │   │   ├── dev/              # 개발 도구 컴포넌트
 │   │   ├── layout/           # 레이아웃 컴포넌트
-│   │   ├── persona/          # 페르소나 선택 컴포넌트
-│   │   └── protocol/         # 프로토콜 랜딩 컴포넌트
-│   │       ├── reveal.tsx    # 스크롤 애니메이션
-│   │       ├── hero-section.tsx
-│   │       ├── chat-demo-section.tsx
-│   │       └── dashboard-section.tsx
+│   │   └── persona/          # 페르소나 선택 컴포넌트
 │   ├── hooks/                # 커스텀 훅
 │   ├── lib/
 │   │   ├── anthropic.ts      # Claude 클라이언트
@@ -191,7 +178,7 @@ talk-with/
 │   │   └── ...
 │   └── types/                # TypeScript 타입
 ├── public/
-│   └── logos/                # 프로토콜 로고 & 인물 사진
+│   └── logos/                # 페르소나 인물 사진
 ├── prisma/
 │   ├── schema.prisma         # DB 스키마 (v2.0.0)
 │   ├── seed.ts               # 시드 데이터

@@ -28,8 +28,7 @@ talk-with/
 │   │   │   ├── rag/search/          # Vector semantic search
 │   │   │   └── upload/              # Supabase file upload
 │   │   ├── chat/                    # Chat page
-│   │   ├── login/                   # Login page
-│   │   └── protocol/               # Protocol landing
+│   │   └── login/                   # Login page
 │   ├── components/
 │   │   ├── chat/        # ChatInput, ChatMessage, ChatWindow, ConversationList
 │   │   ├── layout/      # AuthProvider, Layout
