@@ -91,7 +91,7 @@ export function ChatWindow({
                   {/* Glow Effect */}
                   <div
                     className="absolute -top-20 -right-20 w-40 h-40 rounded-full blur-3xl opacity-50"
-                    style={{ backgroundColor: selectedPersona.accentColor }}
+                    style={{ backgroundColor: selectedPersona.accentColor ?? undefined }}
                   />
 
                   <div className="relative flex items-center gap-6">
@@ -99,7 +99,7 @@ export function ChatWindow({
                       <div className="relative">
                         <div
                           className="absolute inset-0 rounded-2xl blur-xl opacity-60"
-                          style={{ backgroundColor: selectedPersona.accentColor }}
+                          style={{ backgroundColor: selectedPersona.accentColor ?? undefined }}
                         />
                         <img
                           src={selectedPersona.imageUrl}
@@ -110,7 +110,7 @@ export function ChatWindow({
                     ) : (
                       <div
                         className="w-24 h-24 rounded-2xl flex items-center justify-center text-4xl font-bold text-white shadow-2xl"
-                        style={{ backgroundColor: selectedPersona.accentColor }}
+                        style={{ backgroundColor: selectedPersona.accentColor ?? undefined }}
                       >
                         {selectedPersona.name[0]}
                       </div>
@@ -118,7 +118,7 @@ export function ChatWindow({
                     <div className="flex-1">
                       <h3
                         className="text-2xl font-bold mb-1"
-                        style={{ color: selectedPersona.accentColor }}
+                        style={{ color: selectedPersona.accentColor ?? undefined }}
                       >
                         {selectedPersona.name}
                       </h3>
@@ -173,7 +173,7 @@ export function ChatWindow({
                           <div className="relative mb-4">
                             <div
                               className="absolute inset-0 rounded-xl blur-lg opacity-0 group-hover:opacity-60 transition-opacity duration-500"
-                              style={{ backgroundColor: persona.accentColor }}
+                              style={{ backgroundColor: persona.accentColor ?? undefined }}
                             />
                             <img
                               src={persona.imageUrl}
@@ -184,7 +184,7 @@ export function ChatWindow({
                         ) : (
                           <div
                             className="w-20 h-20 rounded-xl flex items-center justify-center text-white text-2xl font-bold mb-4 transition-all duration-500 group-hover:scale-110 group-hover:shadow-lg"
-                            style={{ backgroundColor: persona.accentColor }}
+                            style={{ backgroundColor: persona.accentColor ?? undefined }}
                           >
                             {persona.name[0]}
                           </div>
@@ -199,7 +199,7 @@ export function ChatWindow({
                         {/* Hover Arrow */}
                         <div
                           className="mt-3 flex items-center gap-1 text-xs font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0"
-                          style={{ color: persona.accentColor }}
+                          style={{ color: persona.accentColor ?? undefined }}
                         >
                           <span>Start Chat</span>
                           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -251,7 +251,7 @@ export function ChatWindow({
                       <p className="relative text-sm text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-white transition-colors duration-300">
                         {prompt}
                       </p>
-                      <div className="relative mt-2 flex items-center gap-1 text-xs opacity-0 group-hover:opacity-100 transition-all duration-300" style={{ color: selectedPersona.accentColor }}>
+                      <div className="relative mt-2 flex items-center gap-1 text-xs opacity-0 group-hover:opacity-100 transition-all duration-300" style={{ color: selectedPersona.accentColor ?? undefined }}>
                         <span>Ask this</span>
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
@@ -280,7 +280,7 @@ export function ChatWindow({
                 {selectedPersona && (
                   <div
                     className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold shadow-lg"
-                    style={{ backgroundColor: selectedPersona.accentColor }}
+                    style={{ backgroundColor: selectedPersona.accentColor ?? undefined }}
                   >
                     {selectedPersona.imageUrl ? (
                       <img src={selectedPersona.imageUrl} alt="" className="w-full h-full rounded-xl object-cover" />

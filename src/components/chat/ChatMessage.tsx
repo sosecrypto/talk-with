@@ -35,7 +35,7 @@ export function ChatMessage({ message, persona, isLast }: ChatMessageProps) {
             {/* Glow ring */}
             <div
               className="absolute -inset-1 rounded-xl blur-sm opacity-60"
-              style={{ backgroundColor: persona.accentColor }}
+              style={{ backgroundColor: persona.accentColor ?? undefined }}
             />
             {persona.imageUrl ? (
               <img
@@ -46,7 +46,7 @@ export function ChatMessage({ message, persona, isLast }: ChatMessageProps) {
             ) : (
               <div
                 className="relative w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold ring-2 ring-white dark:ring-slate-800"
-                style={{ backgroundColor: persona.accentColor }}
+                style={{ backgroundColor: persona.accentColor ?? undefined }}
               >
                 {persona.name[0]}
               </div>
@@ -70,7 +70,7 @@ export function ChatMessage({ message, persona, isLast }: ChatMessageProps) {
           <div className="flex items-center gap-2 mb-2">
             <span
               className="text-xs font-semibold"
-              style={{ color: persona.accentColor }}
+              style={{ color: persona.accentColor ?? undefined }}
             >
               {persona.name}
             </span>

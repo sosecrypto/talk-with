@@ -67,8 +67,8 @@ export function ChatInput({
               : 'bg-slate-100/80 dark:bg-slate-800/80'
           }`}
           style={{
-            ringColor: isFocused ? `${accentColor}50` : 'transparent',
-          }}
+            '--tw-ring-color': isFocused ? `${accentColor}50` : 'transparent',
+          } as React.CSSProperties}
         >
           {/* Persona indicator */}
           {persona && (
