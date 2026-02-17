@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 
 const legends = [
   { id: 'elon-musk', name: 'Elon Musk', color: 'from-blue-400 to-cyan-500' },
@@ -98,11 +98,11 @@ function FloatingSketch({
 }
 
 export default function Home() {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] overflow-hidden">

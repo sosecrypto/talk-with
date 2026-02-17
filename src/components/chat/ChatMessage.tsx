@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { Message } from '@/types/chat'
 import { Persona } from '@/hooks/usePersonas'
 
@@ -9,20 +10,8 @@ interface ChatMessageProps {
   isLast?: boolean
 }
 
-export function ChatMessage({ message, persona, isLast }: ChatMessageProps) {
+export function ChatMessage({ message, persona }: ChatMessageProps) {
   const isUser = message.role === 'user'
-
-  // Simple markdown-like formatting
-  const formatContent = (content: string) => {
-    return content
-      .split('\n')
-      .map((line, i) => (
-        <span key={i}>
-          {line}
-          {i < content.split('\n').length - 1 && <br />}
-        </span>
-      ))
-  }
 
   return (
     <div
@@ -38,9 +27,11 @@ export function ChatMessage({ message, persona, isLast }: ChatMessageProps) {
               style={{ backgroundColor: persona.accentColor ?? undefined }}
             />
             {persona.imageUrl ? (
-              <img
+              <Image
                 src={persona.imageUrl}
                 alt={persona.name}
+                width={40}
+                height={40}
                 className="relative w-10 h-10 rounded-xl object-cover ring-2 ring-white dark:ring-slate-800"
               />
             ) : (
@@ -93,10 +84,13 @@ export function ChatMessage({ message, persona, isLast }: ChatMessageProps) {
             {message.attachments.map((attachment) => (
               <div key={attachment.id}>
                 {attachment.type === 'image' ? (
-                  <img
+                  <Image
                     src={attachment.url}
                     alt={attachment.name}
+                    width={320}
+                    height={240}
                     className="max-w-xs rounded-xl shadow-md"
+                    unoptimized
                   />
                 ) : (
                   <a

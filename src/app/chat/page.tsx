@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { useSession, signOut } from 'next-auth/react'
 import { ChatWindow } from '@/components/chat/ChatWindow'
 import { ConversationList } from '@/components/chat/ConversationList'
@@ -115,9 +116,11 @@ export default function ChatPage() {
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
             {session?.user?.image ? (
-              <img
+              <Image
                 src={session.user.image}
                 alt={session.user.name || 'User'}
+                width={40}
+                height={40}
                 className="w-10 h-10 rounded-full"
               />
             ) : (
@@ -189,9 +192,11 @@ export default function ChatPage() {
                 style={{ backgroundColor: selectedPersona.accentColor || '#3B82F6' }}
               >
                 {selectedPersona.imageUrl ? (
-                  <img
+                  <Image
                     src={selectedPersona.imageUrl}
                     alt={selectedPersona.name}
+                    width={20}
+                    height={20}
                     className="w-5 h-5 rounded-full object-cover"
                   />
                 ) : (

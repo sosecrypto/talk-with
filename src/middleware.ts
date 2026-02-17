@@ -6,7 +6,7 @@ import type { NextRequest } from 'next/server'
 const isDev = process.env.NODE_ENV === 'development'
 
 export default isDev
-  ? function middleware(request: NextRequest) {
+  ? function middleware(_request: NextRequest) {
       // 개발 모드: 모든 요청 통과
       return NextResponse.next()
     }

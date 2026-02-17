@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { listPublicPersonas } from '@/lib/prompt-generator'
 
 export interface PersonaListItem {
@@ -14,7 +14,7 @@ export interface PersonaListItem {
   totalConversations: number
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const personas = await listPublicPersonas()
 

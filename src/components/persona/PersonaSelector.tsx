@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Persona } from '@/hooks/usePersonas'
 
 interface PersonaSelectorProps {
@@ -59,9 +60,11 @@ export function PersonaSelector({
         {selectedPersona ? (
           <>
             {selectedPersona.imageUrl ? (
-              <img
+              <Image
                 src={selectedPersona.imageUrl}
                 alt={selectedPersona.name}
+                width={32}
+                height={32}
                 className="w-8 h-8 rounded-full object-cover border-2 border-white/30 flex-shrink-0"
               />
             ) : (

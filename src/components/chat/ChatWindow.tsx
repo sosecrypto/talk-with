@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import Image from 'next/image'
 import { Message } from '@/types/chat'
 import { Persona } from '@/hooks/usePersonas'
 import { ChatMessage } from './ChatMessage'
@@ -101,9 +102,11 @@ export function ChatWindow({
                           className="absolute inset-0 rounded-2xl blur-xl opacity-60"
                           style={{ backgroundColor: selectedPersona.accentColor ?? undefined }}
                         />
-                        <img
+                        <Image
                           src={selectedPersona.imageUrl}
                           alt={selectedPersona.name}
+                          width={96}
+                          height={96}
                           className="relative w-24 h-24 rounded-2xl object-cover ring-4 ring-white/50 dark:ring-white/20"
                         />
                       </div>
@@ -175,9 +178,11 @@ export function ChatWindow({
                               className="absolute inset-0 rounded-xl blur-lg opacity-0 group-hover:opacity-60 transition-opacity duration-500"
                               style={{ backgroundColor: persona.accentColor ?? undefined }}
                             />
-                            <img
+                            <Image
                               src={persona.imageUrl}
                               alt={persona.name}
+                              width={80}
+                              height={80}
                               className="relative w-20 h-20 rounded-xl object-cover transition-transform duration-500 group-hover:scale-110"
                             />
                           </div>
@@ -283,7 +288,7 @@ export function ChatWindow({
                     style={{ backgroundColor: selectedPersona.accentColor ?? undefined }}
                   >
                     {selectedPersona.imageUrl ? (
-                      <img src={selectedPersona.imageUrl} alt="" className="w-full h-full rounded-xl object-cover" />
+                      <Image src={selectedPersona.imageUrl} alt="" width={40} height={40} className="w-full h-full rounded-xl object-cover" />
                     ) : (
                       selectedPersona.name[0]
                     )}
