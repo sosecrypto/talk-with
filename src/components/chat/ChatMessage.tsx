@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import ReactMarkdown from 'react-markdown'
 import { Message } from '@/types/chat'
 import { Persona } from '@/hooks/usePersonas'
 
@@ -72,10 +73,39 @@ export function ChatMessage({ message, persona }: ChatMessageProps) {
         )}
 
         {/* Message Content */}
-        <div className="prose prose-sm max-w-none">
-          <p className="whitespace-pre-wrap break-words m-0 leading-relaxed">
-            {message.content}
-          </p>
+        <div className={`prose prose-sm max-w-none ${isUser ? '' : 'dark:prose-invert'}`}>
+          {isUser ? (
+            <p className="whitespace-pre-wrap break-words m-0 leading-relaxed">
+              {message.content}
+            </p>
+          ) : (
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => (
+                  <p className="whitespace-pre-wrap break-words leading-relaxed my-2 first:mt-0 last:mb-0">
+                    {children}
+                  </p>
+                ),
+                code: ({ children, className }) => {
+                  const isInline = !className
+                  return isInline ? (
+                    <code className="bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-sm">
+                      {children}
+                    </code>
+                  ) : (
+                    <code className={className}>{children}</code>
+                  )
+                },
+                pre: ({ children }) => (
+                  <pre className="bg-slate-900 dark:bg-slate-950 text-slate-100 rounded-lg p-4 overflow-x-auto my-3">
+                    {children}
+                  </pre>
+                ),
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          )}
         </div>
 
         {/* Attachments */}

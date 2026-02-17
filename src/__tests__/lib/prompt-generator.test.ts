@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { generatePersonaPrompt, getPersonaBySlug, listPublicPersonas } from '@/lib/prompt-generator'
 import { mockPrisma, resetPrismaMocks } from '../mocks/prisma'
 import {

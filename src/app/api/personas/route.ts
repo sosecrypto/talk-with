@@ -21,6 +21,10 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       personas: personas as PersonaListItem[],
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+      },
     })
   } catch (error) {
     console.error('Personas API error:', error)
