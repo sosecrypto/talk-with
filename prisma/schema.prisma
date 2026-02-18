@@ -192,6 +192,7 @@ model User {
   sessions      Session[]
   conversations Conversation[]
   feedbacks     ConversationFeedback[]
+  preference    UserPreference?
 
   // Timestamps
   createdAt DateTime  @default(now()) @map("created_at")
@@ -201,6 +202,22 @@ model User {
   @@index([email])
   @@index([role])
   @@map("users")
+}
+
+model UserPreference {
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  theme          String   @default("system") // "light" | "dark" | "system"
+  defaultPersona String?  @map("default_persona") // persona slug
+  language       String   @default("ko")
+  metadata       Json?    // 향후 확장용
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("user_preferences")
 }
 
 model VerificationToken {

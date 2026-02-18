@@ -26,6 +26,7 @@ vi.mock('@/lib/prisma', () => ({
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
       aggregate: vi.fn(),
@@ -34,6 +35,8 @@ vi.mock('@/lib/prisma', () => ({
     message: {
       create: vi.fn(),
       count: vi.fn(),
+      aggregate: vi.fn(),
+      groupBy: vi.fn(),
     },
     messageAttachment: {
       create: vi.fn(),
@@ -56,9 +59,23 @@ vi.mock('@/lib/prisma', () => ({
     chunk: {
       count: vi.fn(),
     },
+    userPreference: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    conversationFeedback: {
+      findMany: vi.fn(),
+      count: vi.fn(),
+      aggregate: vi.fn(),
+      groupBy: vi.fn(),
+    },
     auditLog: {
       create: vi.fn(),
     },
+    $queryRaw: vi.fn(),
   },
 }))
 

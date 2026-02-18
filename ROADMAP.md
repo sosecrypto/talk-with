@@ -82,7 +82,8 @@
 
 ### 3.3 추가 기능
 - [x] 반응형 모바일 UI 최적화 (사이드바 overlay, dvh, 그리드 반응형, enterkeyhint)
-- [ ] 사용자 설정 페이지
+- [x] 사용자 설정 페이지 (테마, 프로필, 기본 페르소나, 대화 관리)
+- [x] ThemeProvider (Light/Dark/System, localStorage + system preference 동기화)
 - [x] 대화 내보내기 기능 (JSON, Markdown)
 
 ---
@@ -95,7 +96,13 @@
 - [ ] 비디오 컨텐츠 분석
 
 ### 4.2 고급 분석
-- [ ] 대화 분석 대시보드
+- [x] 대화 분석 대시보드 (Recharts, 4탭: Overview/Personas/Tokens/Feedback)
+- [x] 기간 필터 (7d/30d/90d)
+- [x] 일별 대화 수 트렌드 라인차트
+- [x] 페르소나별 대화 수 바차트
+- [x] 토큰 사용량 분석 (입출력 비율 파이차트)
+- [x] 피드백 분석 (평점, thumbsUp 비율, 유형 분포)
+- [x] Top Users 랭킹
 - [ ] 감정 분석
 - [ ] 주제 클러스터링
 - [ ] 답변 품질 평가
@@ -139,7 +146,13 @@ DELETE /api/admin/personas/:slug  # 페르소나 비활성화
 GET    /api/admin/users           # 사용자 목록
 PATCH  /api/admin/users/:id       # 사용자 role 변경
 GET    /api/admin/sources         # 데이터 소스 현황
-GET    /api/admin/analytics       # 대화 분석
+GET    /api/admin/analytics       # 고급 분석 (?period=7d|30d|90d)
+
+# 사용자 설정
+GET    /api/settings              # 설정 조회
+PATCH  /api/settings              # 설정 업데이트
+PATCH  /api/settings/profile      # 프로필 업데이트
+DELETE /api/settings/conversations # 전체 대화 삭제
 ```
 
 ---
@@ -154,7 +167,7 @@ GET    /api/admin/analytics       # 대화 분석
 | 3.3 | 반응형 모바일 UI | 중간 | 완료 |
 | 3.3 | 대화 내보내기 | 중간 | 완료 |
 | 4.1 | 멀티모달 (Claude Vision) | 중간 | 완료 |
-| 3.3 | 사용자 설정 페이지 | 중간 | 진행 중 |
-| 4.2 | 고급 분석 대시보드 | 중간 | 진행 중 |
+| 3.3 | 사용자 설정 페이지 | 중간 | 완료 |
+| 4.2 | 고급 분석 대시보드 | 중간 | 완료 |
 | 4.1 | 음성 입력/출력 | 낮음 | 예정 |
 | 4.3 | 기업용 기능 | 낮음 | 예정 |

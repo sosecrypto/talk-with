@@ -18,6 +18,7 @@ Talk With Legends는 유명 인물(기업가, 투자자, 기술 리더 등)의 �
 | Authentication | NextAuth.js (Google, GitHub OAuth) |
 | Data Pipeline | n8n + Apify |
 | State Management | Zustand |
+| Charts | Recharts |
 
 ## 지원 페르소나
 
@@ -58,6 +59,20 @@ Talk With Legends는 유명 인물(기업가, 투자자, 기술 리더 등)의 �
 - [x] 멀티모달 이미지 분석 (Claude Vision, 드래그앤드롭 첨부)
 - [x] 대화 내보내기 (JSON, Markdown)
 - [x] 관리자 대시보드 (통계, 페르소나 CRUD, 사용자 관리, 데이터 모니터링, 분석)
+
+### Phase 5 (완료) - 사용자 설정 & 고급 분석
+- [x] 사용자 설정 페이지 (`/settings`)
+  - 테마 전환 (Light/Dark/System)
+  - 프로필 편집 (이름)
+  - 기본 페르소나 설정
+  - 전체 대화 삭제
+- [x] ThemeProvider (localStorage + system preference 동기화)
+- [x] 고급 분석 대시보드 (Recharts)
+  - Overview: KPI 카드 + 일별 트렌드 + Top Users
+  - Personas: 페르소나별 대화 수 바차트
+  - Tokens: 입출력 토큰 분포 파이차트
+  - Feedback: 피드백 유형 분포 + thumbsUp 비율
+  - 기간 필터 (7d/30d/90d)
 
 자세한 로드맵은 [ROADMAP.md](./ROADMAP.md)를 참조하세요.
 
@@ -171,6 +186,14 @@ POST /api/chat
 GET /api/conversations/:id/export?format=json|markdown
 ```
 
+### 사용자 설정
+```
+GET   /api/settings                    # 설정 조회
+PATCH /api/settings                    # 설정 업데이트 (theme, defaultPersona, language)
+PATCH /api/settings/profile            # 프로필 업데이트 (name, image)
+DELETE /api/settings/conversations     # 전체 대화 삭제
+```
+
 ### 관리자 (role=admin 필요)
 ```
 GET    /api/admin/stats                # 전체 통계
@@ -181,7 +204,7 @@ DELETE /api/admin/personas/:slug       # 페르소나 비활성화
 GET    /api/admin/users?page=1&limit=20 # 사용자 목록
 PATCH  /api/admin/users/:id            # 사용자 role 변경
 GET    /api/admin/sources              # 데이터 소스 현황
-GET    /api/admin/analytics            # 대화 분석
+GET    /api/admin/analytics?period=30d  # 고급 분석 (personaStats, dailyConversations, tokenStats, feedbackStats, topUsers)
 ```
 
 ## 프로젝트 구조
@@ -267,7 +290,7 @@ npm run test:coverage # 커버리지 리포트
 
 | 항목 | 수치 |
 |------|------|
-| 테스트 케이스 | 177개 |
+| 테스트 케이스 | 202개 |
 | Statements | 91%+ |
 | Branches | 82%+ |
 | Functions | 97%+ |
