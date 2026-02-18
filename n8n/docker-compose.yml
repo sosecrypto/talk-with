@@ -11,7 +11,7 @@ services:
       # Basic config
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=***REDACTED***
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-changeme}
 
       # Host config
       - N8N_HOST=localhost
@@ -28,7 +28,7 @@ services:
       - EXECUTIONS_DATA_MAX_AGE=168
 
       # External hooks for Supabase
-      - N8N_ENCRYPTION_KEY=your-encryption-key-change-this
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-change-this-encryption-key}
 
     volumes:
       - n8n_data:/home/node/.n8n

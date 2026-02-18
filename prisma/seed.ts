@@ -37,6 +37,7 @@ interface PersonaSeed {
     description?: string
     url?: string
     config: object
+    fetchFrequency?: string
   }[]
 }
 
@@ -88,13 +89,15 @@ const personas: PersonaSeed[] = [
       {
         type: 'YOUTUBE_CHANNEL',
         name: 'Tesla Official',
-        config: { channelId: 'UC5WjFrtBdufl6CZojX3D8dQ' }
+        config: { channelId: 'UC5WjFrtBdufl6CZojX3D8dQ' },
+        fetchFrequency: 'daily',
       },
       {
         type: 'TWITTER_PROFILE',
         name: 'Elon Musk Twitter',
         url: 'https://twitter.com/elonmusk',
-        config: { username: 'elonmusk', includeReplies: true }
+        config: { username: 'elonmusk', includeReplies: true },
+        fetchFrequency: 'daily',
       },
       {
         type: 'PODCAST_SHOW',
@@ -102,12 +105,14 @@ const personas: PersonaSeed[] = [
         config: {
           showName: 'Lex Fridman Podcast',
           guestFilter: 'Elon Musk'
-        }
+        },
+        fetchFrequency: 'daily',
       },
       {
         type: 'EARNINGS_CALL',
         name: 'Tesla Earnings Calls',
-        config: { ticker: 'TSLA', company: 'Tesla' }
+        config: { ticker: 'TSLA', company: 'Tesla' },
+        fetchFrequency: 'monthly',
       }
     ]
   },
@@ -158,12 +163,14 @@ const personas: PersonaSeed[] = [
         type: 'YOUTUBE_VIDEO',
         name: 'Stanford Commencement Speech',
         url: 'https://www.youtube.com/watch?v=UF8uR6Z6KLc',
-        config: { videoId: 'UF8uR6Z6KLc' }
+        config: { videoId: 'UF8uR6Z6KLc' },
+        fetchFrequency: 'once',
       },
       {
         type: 'YOUTUBE_PLAYLIST',
         name: 'Apple Keynotes Archive',
-        config: { playlistId: 'apple-keynotes', searchTerms: ['Steve Jobs keynote'] }
+        config: { playlistId: 'apple-keynotes', searchTerms: ['Steve Jobs keynote'] },
+        fetchFrequency: 'daily',
       },
       {
         type: 'BOOK',
@@ -172,12 +179,14 @@ const personas: PersonaSeed[] = [
           title: 'Steve Jobs',
           author: 'Walter Isaacson',
           isbn: '978-1451648539'
-        }
+        },
+        fetchFrequency: 'once',
       },
       {
         type: 'INTERVIEW_TRANSCRIPT',
         name: 'All Things D Interviews',
-        config: { events: ['D1', 'D2', 'D3', 'D5', 'D8'] }
+        config: { events: ['D1', 'D2', 'D3', 'D5', 'D8'] },
+        fetchFrequency: 'once',
       }
     ]
   },
@@ -231,23 +240,27 @@ const personas: PersonaSeed[] = [
         type: 'BLOG',
         name: 'Vitalik Blog',
         url: 'https://vitalik.eth.limo',
-        config: { blogUrl: 'https://vitalik.eth.limo' }
+        config: { blogUrl: 'https://vitalik.eth.limo' },
+        fetchFrequency: 'daily',
       },
       {
         type: 'TWITTER_PROFILE',
         name: 'Vitalik Twitter',
         url: 'https://twitter.com/VitalikButerin',
-        config: { username: 'VitalikButerin' }
+        config: { username: 'VitalikButerin' },
+        fetchFrequency: 'daily',
       },
       {
         type: 'REDDIT_AMA',
         name: 'Ethereum AMAs',
-        config: { subreddits: ['ethereum', 'ethfinance'] }
+        config: { subreddits: ['ethereum', 'ethfinance'] },
+        fetchFrequency: 'daily',
       },
       {
         type: 'CONFERENCE_TALK',
         name: 'Devcon Talks',
-        config: { conferences: ['Devcon', 'ETHDenver', 'EthCC'] }
+        config: { conferences: ['Devcon', 'ETHDenver', 'EthCC'] },
+        fetchFrequency: 'daily',
       }
     ]
   },
@@ -299,17 +312,20 @@ const personas: PersonaSeed[] = [
       {
         type: 'YOUTUBE_CHANNEL',
         name: 'NVIDIA Official',
-        config: { channelId: 'UCHuiy8bXnmK5nisYHUd1J5g' }
+        config: { channelId: 'UCHuiy8bXnmK5nisYHUd1J5g' },
+        fetchFrequency: 'daily',
       },
       {
         type: 'EARNINGS_CALL',
         name: 'NVIDIA Earnings Calls',
-        config: { ticker: 'NVDA', company: 'NVIDIA' }
+        config: { ticker: 'NVDA', company: 'NVIDIA' },
+        fetchFrequency: 'monthly',
       },
       {
         type: 'CONFERENCE_TALK',
         name: 'GTC Keynotes',
-        config: { conferences: ['GTC', 'CES', 'Computex'] }
+        config: { conferences: ['GTC', 'CES', 'Computex'] },
+        fetchFrequency: 'daily',
       }
     ]
   },
@@ -361,23 +377,27 @@ const personas: PersonaSeed[] = [
         type: 'BLOG',
         name: 'Sam Altman Blog',
         url: 'https://blog.samaltman.com',
-        config: { blogUrl: 'https://blog.samaltman.com' }
+        config: { blogUrl: 'https://blog.samaltman.com' },
+        fetchFrequency: 'daily',
       },
       {
         type: 'TWITTER_PROFILE',
         name: 'Sam Altman Twitter',
         url: 'https://twitter.com/sama',
-        config: { username: 'sama' }
+        config: { username: 'sama' },
+        fetchFrequency: 'daily',
       },
       {
         type: 'PODCAST_SHOW',
         name: 'Podcast Appearances',
-        config: { shows: ['Lex Fridman Podcast', 'How I Built This', 'The Tim Ferriss Show'] }
+        config: { shows: ['Lex Fridman Podcast', 'How I Built This', 'The Tim Ferriss Show'] },
+        fetchFrequency: 'daily',
       },
       {
         type: 'REDDIT_AMA',
         name: 'Reddit AMAs',
-        config: { urls: ['https://www.reddit.com/r/ChatGPT/comments/zy0zov/'] }
+        config: { urls: ['https://www.reddit.com/r/ChatGPT/comments/zy0zov/'] },
+        fetchFrequency: 'daily',
       }
     ]
   },
@@ -428,12 +448,14 @@ const personas: PersonaSeed[] = [
         type: 'SHAREHOLDER_LETTER',
         name: 'Berkshire Annual Letters',
         url: 'https://www.berkshirehathaway.com/letters/letters.html',
-        config: { company: 'Berkshire Hathaway', yearsBack: 50 }
+        config: { company: 'Berkshire Hathaway', yearsBack: 50 },
+        fetchFrequency: 'monthly',
       },
       {
         type: 'YOUTUBE_PLAYLIST',
         name: 'Berkshire Annual Meetings',
-        config: { searchTerms: ['Berkshire Hathaway Annual Meeting'] }
+        config: { searchTerms: ['Berkshire Hathaway Annual Meeting'] },
+        fetchFrequency: 'daily',
       },
       {
         type: 'BOOK',
@@ -441,12 +463,14 @@ const personas: PersonaSeed[] = [
         config: {
           title: 'The Essays of Warren Buffett',
           author: 'Warren Buffett, Lawrence Cunningham'
-        }
+        },
+        fetchFrequency: 'once',
       },
       {
         type: 'EARNINGS_CALL',
         name: 'Berkshire Meetings Q&A',
-        config: { ticker: 'BRK.A', company: 'Berkshire Hathaway' }
+        config: { ticker: 'BRK.A', company: 'Berkshire Hathaway' },
+        fetchFrequency: 'monthly',
       }
     ]
   },
@@ -501,12 +525,23 @@ const personas: PersonaSeed[] = [
           title: 'Trump: The Art of the Deal',
           author: 'Donald Trump, Tony Schwartz',
           isbn: '978-0399594496'
-        }
+        },
+        fetchFrequency: 'once',
       },
       {
         type: 'YOUTUBE_PLAYLIST',
         name: 'Speeches and Rallies',
-        config: { searchTerms: ['Donald Trump speech', 'Trump rally'] }
+        config: { searchTerms: ['Donald Trump speech', 'Trump rally'] },
+        fetchFrequency: 'daily',
+      },
+      {
+        type: 'NEWS_SEARCH',
+        name: 'Trump News',
+        config: {
+          queries: ['Donald Trump', 'President Trump'],
+          sources: ['Reuters', 'AP News', 'Fox News', 'CNN'],
+        },
+        fetchFrequency: 'daily',
       }
     ]
   },
@@ -557,12 +592,22 @@ const personas: PersonaSeed[] = [
         config: {
           queries: ['Lee Jae-yong Samsung', '이재용 삼성'],
           sources: ['Reuters', 'Bloomberg', 'Korea Herald']
-        }
+        },
+        fetchFrequency: 'daily',
       },
       {
         type: 'EARNINGS_CALL',
         name: 'Samsung Earnings',
-        config: { ticker: '005930.KS', company: 'Samsung Electronics' }
+        config: { ticker: '005930.KS', company: 'Samsung Electronics' },
+        fetchFrequency: 'monthly',
+      },
+      {
+        type: 'INTERVIEW_TRANSCRIPT',
+        name: 'Lee Jae-yong Interviews',
+        config: {
+          events: ['CES keynote', 'Samsung Unpacked', 'World Economic Forum'],
+        },
+        fetchFrequency: 'once',
       }
     ]
   },
@@ -614,18 +659,21 @@ const personas: PersonaSeed[] = [
         type: 'BLOG',
         name: 'Gates Notes',
         url: 'https://www.gatesnotes.com',
-        config: { blogUrl: 'https://www.gatesnotes.com' }
+        config: { blogUrl: 'https://www.gatesnotes.com' },
+        fetchFrequency: 'daily',
       },
       {
         type: 'TWITTER_PROFILE',
         name: 'Bill Gates Twitter',
         url: 'https://twitter.com/BillGates',
-        config: { username: 'BillGates' }
+        config: { username: 'BillGates' },
+        fetchFrequency: 'daily',
       },
       {
         type: 'YOUTUBE_CHANNEL',
         name: 'Bill Gates YouTube',
-        config: { channelId: 'UCnmgSO_4g6QcRzy0yFeglyA' }
+        config: { channelId: 'UCnmgSO_4g6QcRzy0yFeglyA' },
+        fetchFrequency: 'daily',
       },
       {
         type: 'REDDIT_AMA',
@@ -635,12 +683,14 @@ const personas: PersonaSeed[] = [
             'https://www.reddit.com/r/IAmA/comments/18bhme/',
             'https://www.reddit.com/r/IAmA/comments/49jkhn/'
           ]
-        }
+        },
+        fetchFrequency: 'daily',
       },
       {
         type: 'BOOK',
         name: 'How to Avoid a Climate Disaster',
-        config: { title: 'How to Avoid a Climate Disaster', author: 'Bill Gates' }
+        config: { title: 'How to Avoid a Climate Disaster', author: 'Bill Gates' },
+        fetchFrequency: 'once',
       }
     ]
   },
@@ -692,17 +742,20 @@ const personas: PersonaSeed[] = [
         type: 'SHAREHOLDER_LETTER',
         name: 'Amazon Shareholder Letters',
         url: 'https://ir.aboutamazon.com/annual-reports-proxies-and-shareholder-letters/default.aspx',
-        config: { company: 'Amazon', yearsBack: 25 }
+        config: { company: 'Amazon', yearsBack: 25 },
+        fetchFrequency: 'monthly',
       },
       {
         type: 'YOUTUBE_PLAYLIST',
         name: 'Bezos Interviews',
-        config: { searchTerms: ['Jeff Bezos interview', 'Jeff Bezos speech'] }
+        config: { searchTerms: ['Jeff Bezos interview', 'Jeff Bezos speech'] },
+        fetchFrequency: 'daily',
       },
       {
         type: 'PODCAST_SHOW',
         name: 'Lex Fridman Interview',
-        config: { showName: 'Lex Fridman Podcast', guestFilter: 'Jeff Bezos' }
+        config: { showName: 'Lex Fridman Podcast', guestFilter: 'Jeff Bezos' },
+        fetchFrequency: 'daily',
       }
     ]
   },
@@ -750,12 +803,20 @@ const personas: PersonaSeed[] = [
       {
         type: 'YOUTUBE_PLAYLIST',
         name: 'Google Founders Interviews',
-        config: { searchTerms: ['Larry Page interview', 'Larry Page Google'] }
+        config: { searchTerms: ['Larry Page interview', 'Larry Page Google'] },
+        fetchFrequency: 'daily',
       },
       {
         type: 'INTERVIEW_TRANSCRIPT',
         name: 'University Commencement Speeches',
-        config: { events: ['University of Michigan 2009'] }
+        config: { events: ['University of Michigan 2009'] },
+        fetchFrequency: 'once',
+      },
+      {
+        type: 'CONFERENCE_TALK',
+        name: 'Google I/O & TED Talks',
+        config: { conferences: ['Google I/O', 'TED', 'SXSW'] },
+        fetchFrequency: 'daily',
       }
     ]
   },
@@ -802,12 +863,23 @@ const personas: PersonaSeed[] = [
       {
         type: 'YOUTUBE_PLAYLIST',
         name: 'Sergey Brin Interviews',
-        config: { searchTerms: ['Sergey Brin interview', 'Sergey Brin Google'] }
+        config: { searchTerms: ['Sergey Brin interview', 'Sergey Brin Google'] },
+        fetchFrequency: 'daily',
       },
       {
         type: 'CONFERENCE_TALK',
         name: 'Google I/O Appearances',
-        config: { conferences: ['Google I/O', 'TED'] }
+        config: { conferences: ['Google I/O', 'TED'] },
+        fetchFrequency: 'daily',
+      },
+      {
+        type: 'NEWS_SEARCH',
+        name: 'Sergey Brin News',
+        config: {
+          queries: ['Sergey Brin', 'Google co-founder Brin'],
+          sources: ['Reuters', 'Bloomberg', 'TechCrunch'],
+        },
+        fetchFrequency: 'daily',
       }
     ]
   },
@@ -857,12 +929,14 @@ const personas: PersonaSeed[] = [
       {
         type: 'YOUTUBE_CHANNEL',
         name: 'Mark Zuckerberg Facebook',
-        config: { channelId: 'UC7z-6DfoUtWe0LRJJ4sAFJQ' }
+        config: { channelId: 'UC7z-6DfoUtWe0LRJJ4sAFJQ' },
+        fetchFrequency: 'daily',
       },
       {
         type: 'EARNINGS_CALL',
         name: 'Meta Earnings Calls',
-        config: { ticker: 'META', company: 'Meta Platforms' }
+        config: { ticker: 'META', company: 'Meta Platforms' },
+        fetchFrequency: 'monthly',
       },
       {
         type: 'PODCAST_SHOW',
@@ -870,12 +944,14 @@ const personas: PersonaSeed[] = [
         config: {
           shows: ['Lex Fridman Podcast', 'Joe Rogan Experience'],
           guestFilter: 'Mark Zuckerberg'
-        }
+        },
+        fetchFrequency: 'daily',
       },
       {
         type: 'CONFERENCE_TALK',
         name: 'Meta Connect',
-        config: { conferences: ['Meta Connect', 'F8'] }
+        config: { conferences: ['Meta Connect', 'F8'] },
+        fetchFrequency: 'daily',
       }
     ]
   }
@@ -975,6 +1051,7 @@ async function main() {
             description: source.description,
             url: source.url,
             config: source.config,
+            fetchFrequency: source.fetchFrequency ?? null,
             status: 'PENDING' as SourceStatus,
             priority: 0
           }

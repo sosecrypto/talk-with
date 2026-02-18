@@ -13,7 +13,11 @@
     "db:studio": "prisma studio",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "n8n:setup": "bash n8n/setup.sh",
+    "n8n:start": "docker compose -f n8n/docker-compose.yml up -d",
+    "n8n:stop": "docker compose -f n8n/docker-compose.yml down",
+    "n8n:logs": "docker compose -f n8n/docker-compose.yml logs -f"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

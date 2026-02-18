@@ -133,11 +133,16 @@ prisma/migrations/rls-policies.sql
 ### 5. n8n 설정 (데이터 수집)
 
 ```bash
-cd n8n
-docker-compose up -d
+# 자동 설정 (컨테이너 시작 + 워크플로우 import)
+npm run n8n:setup
+
+# 또는 개별 명령어
+npm run n8n:start    # n8n 컨테이너 시작
+npm run n8n:stop     # n8n 컨테이너 중지
+npm run n8n:logs     # n8n 로그 확인
 ```
 
-자세한 설정은 [n8n/README.md](./n8n/README.md)를 참조하세요.
+n8n 비밀번호 설정은 `n8n/.env.example`을 참고하세요.
 
 ### 6. 개발 서버 실행
 
@@ -204,6 +209,11 @@ DELETE /api/admin/personas/:slug       # 페르소나 비활성화
 GET    /api/admin/users?page=1&limit=20 # 사용자 목록
 PATCH  /api/admin/users/:id            # 사용자 role 변경
 GET    /api/admin/sources              # 데이터 소스 현황
+POST   /api/admin/sources              # 소스 생성
+PATCH  /api/admin/sources/:id          # 소스 수정
+DELETE /api/admin/sources/:id          # 소스 삭제 (soft delete → ARCHIVED)
+POST   /api/admin/sources/:id/trigger  # 수동 수집 트리거
+GET    /api/admin/pipeline             # 파이프라인 상태 (documents, chunks, sources, fetchLogs)
 GET    /api/admin/analytics?period=30d  # 고급 분석 (personaStats, dailyConversations, tokenStats, feedbackStats, topUsers)
 ```
 

@@ -64,6 +64,9 @@
 - [x] 페르소나 선택 UI (프로필 카드)
 - [x] 대화 시작 시 페르소나 선택
 - [x] 관리자 대시보드 (CRUD, 수집 상태 모니터링, 사용자 관리, 분석)
+- [x] Source CRUD API (POST/PATCH/DELETE + 수동 수집 트리거)
+- [x] Pipeline Status API (documents, chunks, sources, fetchLogs)
+- [x] n8n 자동 설정 스크립트 (setup.sh, teardown.sh)
 
 ---
 
@@ -146,6 +149,11 @@ DELETE /api/admin/personas/:slug  # 페르소나 비활성화
 GET    /api/admin/users           # 사용자 목록
 PATCH  /api/admin/users/:id       # 사용자 role 변경
 GET    /api/admin/sources         # 데이터 소스 현황
+POST   /api/admin/sources         # 소스 생성
+PATCH  /api/admin/sources/:id     # 소스 수정
+DELETE /api/admin/sources/:id     # 소스 삭제 (ARCHIVED)
+POST   /api/admin/sources/:id/trigger # 수동 수집 트리거
+GET    /api/admin/pipeline         # 파이프라인 상태
 GET    /api/admin/analytics       # 고급 분석 (?period=7d|30d|90d)
 
 # 사용자 설정
