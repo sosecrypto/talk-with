@@ -63,11 +63,11 @@
 - [x] 페르소나 목록/상세 API
 - [x] 페르소나 선택 UI (프로필 카드)
 - [x] 대화 시작 시 페르소나 선택
-- [ ] 관리자 대시보드 (CRUD, 수집 상태 모니터링)
+- [x] 관리자 대시보드 (CRUD, 수집 상태 모니터링, 사용자 관리, 분석)
 
 ---
 
-## Phase 3: UI/UX 고도화 (진행 중)
+## Phase 3: UI/UX 고도화 (완료)
 
 ### 3.1 UI 개선
 - [x] 다크모드 지원 (클래스 기반 `.dark`)
@@ -80,17 +80,17 @@
 - [x] ESLint 설정 및 전체 lint 클린
 - [x] Vitest + Testing Library 테스트 인프라 (114개 케이스, 91%+ 커버리지)
 
-### 3.3 미완료
-- [ ] 반응형 모바일 UI 최적화
+### 3.3 추가 기능
+- [x] 반응형 모바일 UI 최적화 (사이드바 overlay, dvh, 그리드 반응형, enterkeyhint)
 - [ ] 사용자 설정 페이지
-- [ ] 대화 내보내기 기능
+- [x] 대화 내보내기 기능 (JSON, Markdown)
 
 ---
 
-## Phase 4: 고급 기능 (예정)
+## Phase 4: 고급 기능 (진행 중)
 
 ### 4.1 멀티모달 지원
-- [ ] 이미지 분석 (Claude Vision)
+- [x] 이미지 분석 (Claude Vision, 드래그앤드롭 첨부)
 - [ ] 음성 입력/출력
 - [ ] 비디오 컨텐츠 분석
 
@@ -111,14 +111,35 @@
 ## 구현된 API 엔드포인트
 
 ```
+# 페르소나
 GET    /api/personas              # 페르소나 목록
 GET    /api/personas/:slug        # 페르소나 상세
-POST   /api/chat                  # SSE 스트리밍 채팅
+
+# 채팅
+POST   /api/chat                  # SSE 스트리밍 채팅 (멀티모달 지원)
+
+# 대화
 GET    /api/conversations         # 대화 목록 (pagination)
 POST   /api/conversations         # 대화 생성
 DELETE /api/conversations/:id     # 대화 삭제
-POST   /api/rag/search            # 하이브리드 검색 (벡터 + 키워드)
+GET    /api/conversations/:id/export  # 대화 내보내기 (JSON/Markdown)
+
+# RAG 검색
+POST   /api/rag/search            # 하이브리드 검색 (벡터 + 키워드 + Reranking)
+
+# 파일
 POST   /api/upload                # 파일 업로드
+
+# 관리자 (role=admin 필요)
+GET    /api/admin/stats           # 전체 통계
+GET    /api/admin/personas        # 페르소나 목록 (DRAFT 포함)
+POST   /api/admin/personas        # 페르소나 생성
+PATCH  /api/admin/personas/:slug  # 페르소나 수정
+DELETE /api/admin/personas/:slug  # 페르소나 비활성화
+GET    /api/admin/users           # 사용자 목록
+PATCH  /api/admin/users/:id       # 사용자 role 변경
+GET    /api/admin/sources         # 데이터 소스 현황
+GET    /api/admin/analytics       # 대화 분석
 ```
 
 ---
@@ -129,9 +150,11 @@ POST   /api/upload                # 파일 업로드
 |------|------|----------|------|
 | 2.3 | 하이브리드 검색 | 중간 | 완료 |
 | 2.3 | 검색 결과 재순위화 | 낮음 | 완료 |
-| 2.4 | 관리자 대시보드 | 중간 | 예정 |
-| 3.3 | 반응형 모바일 UI | 중간 | 예정 |
-| 3.3 | 사용자 설정 페이지 | 낮음 | 예정 |
-| 4.1 | 멀티모달 지원 | 중간 | 예정 |
-| 4.2 | 대화 분석 | 낮음 | 예정 |
+| 2.4 | 관리자 대시보드 | 중간 | 완료 |
+| 3.3 | 반응형 모바일 UI | 중간 | 완료 |
+| 3.3 | 대화 내보내기 | 중간 | 완료 |
+| 4.1 | 멀티모달 (Claude Vision) | 중간 | 완료 |
+| 3.3 | 사용자 설정 페이지 | 중간 | 진행 중 |
+| 4.2 | 고급 분석 대시보드 | 중간 | 진행 중 |
+| 4.1 | 음성 입력/출력 | 낮음 | 예정 |
 | 4.3 | 기업용 기능 | 낮음 | 예정 |
