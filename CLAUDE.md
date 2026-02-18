@@ -12,7 +12,7 @@ RAG-based AI persona chatbot platform. Collects interviews, social media, and ne
 - **ORM**: Prisma 5
 - **Auth**: NextAuth.js (Google, GitHub OAuth)
 - **State**: Zustand
-- **Data Pipeline**: n8n + Apify (web scraping)
+- **Data Pipeline**: n8n (Self-Hosted, Hetzner) + Apify (web scraping)
 
 ## Project Structure
 
@@ -50,8 +50,9 @@ talk-with/
 │   ├── seed.ts          # 18 persona seed data
 │   └── migrations/      # Migration history
 ├── n8n/
-│   ├── docker-compose.yml  # n8n container
-│   └── workflows/          # Data collection workflows
+│   ├── docker-compose.yml     # n8n Self-Hosted container
+│   ├── README.md              # n8n Self-Hosted setup guide
+│   └── workflows/             # Data collection workflows
 └── docs/                   # Planning docs
 ```
 
@@ -78,16 +79,25 @@ talk-with/
 | Embedding Generator | 30min | OpenAI vector generation |
 | Characteristic Extractor | 4h | Claude-based trait extraction |
 
-## Commands
+## Commands (Allowed)
 
 ```bash
 npm run dev           # Dev server (port 3000)
 npm run build         # Production build
 npm run lint          # ESLint
+npm test              # Run tests
+npm run test:run      # Single test run
+npm run test:coverage # Coverage report
 npm run db:generate   # Generate Prisma client
 npm run db:push       # Push schema to DB
 npm run db:seed       # Seed persona data
 npm run db:studio     # Prisma Studio GUI
+npm run n8n:start            # Start n8n container
+npm run n8n:stop             # Stop n8n container
+npm run n8n:logs             # View n8n logs
+npm run n8n:import           # Import workflows to n8n
+npm run n8n:import:activate  # Import + activate workflows
+npm run n8n:import:dry-run   # Validate workflow JSON only
 ```
 
 ## Environment Variables
@@ -117,6 +127,9 @@ GOOGLE_CLIENT_SECRET=
 GITHUB_ID=
 GITHUB_SECRET=
 ```
+
+## Security Notes
+- SUPABASE_SERVICE_ROLE_KEY 절대 클라이언트 노출 금지
 
 ## Key DB Models
 

@@ -1,60 +1,19 @@
-version: '3.8'
-
 services:
   n8n:
     image: n8nio/n8n:latest
-    container_name: talkwithlegend-n8n
+    container_name: n8n
     restart: unless-stopped
     ports:
       - "5678:5678"
     environment:
-      # Basic config
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-changeme}
-
-      # Host config
-      - N8N_HOST=localhost
+      - N8N_HOST=0.0.0.0
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
-      - WEBHOOK_URL=http://localhost:5678/
-
-      # Timezone
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678}
       - GENERIC_TIMEZONE=Asia/Seoul
-      - TZ=Asia/Seoul
-
-      # Execution settings
-      - EXECUTIONS_DATA_PRUNE=true
-      - EXECUTIONS_DATA_MAX_AGE=168
-
-      # External hooks for Supabase
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-change-this-encryption-key}
-
+      - N8N_DEFAULT_LOCALE=ko
     volumes:
       - n8n_data:/home/node/.n8n
-      - ./workflows:/home/node/workflows
-    networks:
-      - talkwithlegend
-
-  # Optional: PostgreSQL for n8n (instead of SQLite)
-  # Uncomment if you want separate DB for n8n
-  # n8n-db:
-  #   image: postgres:15-alpine
-  #   container_name: talkwithlegend-n8n-db
-  #   restart: unless-stopped
-  #   environment:
-  #     - POSTGRES_USER=n8n
-  #     - POSTGRES_PASSWORD=n8n_password
-  #     - POSTGRES_DB=n8n
-  #   volumes:
-  #     - n8n_db_data:/var/lib/postgresql/data
-  #   networks:
-  #     - talkwithlegend
 
 volumes:
   n8n_data:
-  # n8n_db_data:
-
-networks:
-  talkwithlegend:
-    driver: bridge

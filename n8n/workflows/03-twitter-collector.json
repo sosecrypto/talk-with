@@ -97,6 +97,34 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-apify-status",
+              "leftValue": "={{ $json.data.status }}",
+              "rightValue": "SUCCEEDED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Apify Run Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
         "method": "GET",
         "url": "=https://api.apify.com/v2/datasets/{{ $json.data.defaultDatasetId }}/items",
         "authentication": "genericCredentialType",
@@ -106,7 +134,7 @@
       "name": "Get Tweet Results",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1250, 200],
+      "position": [1450, 100],
       "credentials": {
         "httpHeaderAuth": {
           "id": "APIFY_CREDENTIAL_ID",
@@ -121,7 +149,7 @@
       "name": "Transform Tweets to Documents",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1450, 200]
+      "position": [1650, 100]
     },
     {
       "parameters": {
@@ -131,7 +159,7 @@
       "name": "Save to Documents",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1650, 200],
+      "position": [1850, 100],
       "credentials": {
         "postgres": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -147,7 +175,7 @@
       "name": "Update Source Stats",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1850, 200],
+      "position": [2050, 100],
       "credentials": {
         "postgres": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -163,7 +191,23 @@
       "name": "Log Fetch Result",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [2050, 200],
+      "position": [2250, 100],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO fetch_logs (id, source_id, status, error_message, metadata, created_at)\nVALUES (\n  gen_random_uuid(),\n  '{{ $('Get Active Twitter Sources').first().json.source_id }}',\n  'error',\n  'Apify run failed with status: {{ $json.data.status }}',\n  '{{ JSON.stringify({ apify_run_id: $json.data.id, status: $json.data.status, platform: \"twitter\" }).replace(/'/g, \"''\") }}'::jsonb,\n  NOW()\n)"
+      },
+      "name": "Log Apify Failure",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1450, 350],
       "credentials": {
         "postgres": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -235,7 +279,25 @@
       "main": [
         [
           {
+            "node": "Apify Run Succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify Run Succeeded?": {
+      "main": [
+        [
+          {
             "node": "Get Tweet Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Apify Failure",
             "type": "main",
             "index": 0
           }

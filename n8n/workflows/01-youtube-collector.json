@@ -35,6 +35,16 @@
     },
     {
       "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "Loop Over Sources",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://api.apify.com/v2/acts/bernardo~youtube-transcript-scraper/runs",
         "authentication": "genericCredentialType",
@@ -47,7 +57,7 @@
       "name": "Call Apify YouTube Transcript",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [650, 300],
+      "position": [850, 300],
       "credentials": {
         "httpHeaderAuth": {
           "id": "APIFY_CREDENTIAL_ID",
@@ -68,7 +78,7 @@
       "name": "Wait for Apify Run",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [850, 300],
+      "position": [1050, 300],
       "credentials": {
         "httpHeaderAuth": {
           "id": "APIFY_CREDENTIAL_ID",
@@ -81,6 +91,34 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-apify-status",
+              "leftValue": "={{ $json.data.status }}",
+              "rightValue": "SUCCEEDED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Apify Run Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
         "method": "GET",
         "url": "=https://api.apify.com/v2/datasets/{{ $json.data.defaultDatasetId }}/items",
         "authentication": "genericCredentialType",
@@ -90,7 +128,7 @@
       "name": "Get Transcript Results",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1050, 300],
+      "position": [1450, 200],
       "credentials": {
         "httpHeaderAuth": {
           "id": "APIFY_CREDENTIAL_ID",
@@ -100,12 +138,12 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  // Skip if no transcript\n  if (!data.transcript || data.transcript.length === 0) continue;\n  \n  // Combine transcript segments into full text\n  const transcriptText = data.transcript\n    .map(seg => seg.text)\n    .join(' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n  \n  // Create document object\n  results.push({\n    json: {\n      external_id: data.videoId,\n      external_url: `https://www.youtube.com/watch?v=${data.videoId}`,\n      title: data.title || 'Untitled Video',\n      raw_content: transcriptText,\n      author: data.channelName || data.author,\n      published_at: data.uploadDate ? new Date(data.uploadDate).toISOString() : null,\n      language: data.language || 'EN',\n      duration_seconds: data.duration,\n      has_transcript: true,\n      transcript_source: 'apify',\n      word_count: transcriptText.split(/\\s+/).length,\n      source_metadata: {\n        channel_id: data.channelId,\n        view_count: data.viewCount,\n        like_count: data.likeCount,\n        thumbnail: data.thumbnailUrl\n      },\n      // Carry over persona info from previous node\n      persona_id: $('Get Active YouTube Sources').first().json.persona_id,\n      source_id: $('Get Active YouTube Sources').first().json.source_id\n    }\n  });\n}\n\nreturn results;"
+        "jsCode": "const items = $input.all();\nconst results = [];\n\n// Get current source info from the batch loop\nconst sourceInfo = $('Loop Over Sources').first().json;\n\nfor (const item of items) {\n  const data = item.json;\n  \n  // Skip if no transcript\n  if (!data.transcript || data.transcript.length === 0) continue;\n  \n  // Combine transcript segments into full text\n  const transcriptText = data.transcript\n    .map(seg => seg.text)\n    .join(' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n  \n  // Create document object\n  results.push({\n    json: {\n      external_id: data.videoId,\n      external_url: `https://www.youtube.com/watch?v=${data.videoId}`,\n      title: data.title || 'Untitled Video',\n      raw_content: transcriptText,\n      author: data.channelName || data.author,\n      published_at: data.uploadDate ? new Date(data.uploadDate).toISOString() : null,\n      language: data.language || 'EN',\n      duration_seconds: data.duration,\n      has_transcript: true,\n      transcript_source: 'apify',\n      word_count: transcriptText.split(/\\s+/).length,\n      source_metadata: {\n        channel_id: data.channelId,\n        view_count: data.viewCount,\n        like_count: data.likeCount,\n        thumbnail: data.thumbnailUrl\n      },\n      persona_id: sourceInfo.persona_id,\n      source_id: sourceInfo.source_id\n    }\n  });\n}\n\nreturn results;"
       },
       "name": "Transform Transcripts",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1250, 300]
+      "position": [1650, 200]
     },
     {
       "parameters": {
@@ -115,7 +153,7 @@
       "name": "Save to Documents",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1450, 300],
+      "position": [1850, 200],
       "credentials": {
         "postgres": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -126,12 +164,12 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE sources\nSET \n  last_fetched_at = NOW(),\n  next_fetch_at = NOW() + INTERVAL '1 day',\n  total_fetches = total_fetches + 1,\n  success_fetches = success_fetches + 1,\n  total_documents = total_documents + 1,\n  updated_at = NOW()\nWHERE id = '{{ $('Get Active YouTube Sources').first().json.source_id }}'"
+        "query": "UPDATE sources\nSET \n  last_fetched_at = NOW(),\n  next_fetch_at = NOW() + INTERVAL '1 day',\n  total_fetches = total_fetches + 1,\n  success_fetches = success_fetches + 1,\n  total_documents = total_documents + 1,\n  updated_at = NOW()\nWHERE id = '{{ $('Loop Over Sources').first().json.source_id }}'"
       },
       "name": "Update Source Stats",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1650, 300],
+      "position": [2050, 200],
       "credentials": {
         "postgres": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -142,18 +180,41 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO fetch_logs (id, source_id, status, items_found, items_new, duration_ms, created_at)\nVALUES (\n  gen_random_uuid(),\n  '{{ $('Get Active YouTube Sources').first().json.source_id }}',\n  'success',\n  {{ $('Transform Transcripts').all().length }},\n  {{ $('Transform Transcripts').all().length }},\n  {{ Date.now() - $('Schedule Trigger').first().json.timestamp }},\n  NOW()\n)"
+        "query": "INSERT INTO fetch_logs (id, source_id, status, items_found, items_new, duration_ms, created_at)\nVALUES (\n  gen_random_uuid(),\n  '{{ $('Loop Over Sources').first().json.source_id }}',\n  'success',\n  {{ $('Transform Transcripts').all().length }},\n  {{ $('Transform Transcripts').all().length }},\n  {{ Date.now() - $('Schedule Trigger').first().json.timestamp }},\n  NOW()\n)"
       },
       "name": "Log Fetch Result",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1850, 300],
+      "position": [2250, 200],
       "credentials": {
         "postgres": {
           "id": "SUPABASE_CREDENTIAL_ID",
           "name": "Supabase PostgreSQL"
         }
       }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO fetch_logs (id, source_id, status, error_message, metadata, created_at)\nVALUES (\n  gen_random_uuid(),\n  '{{ $('Loop Over Sources').first().json.source_id }}',\n  'error',\n  'Apify run failed with status: {{ $json.data.status }}',\n  '{{ JSON.stringify({ apify_run_id: $json.data.id, status: $json.data.status }).replace(/'/g, \"''\") }}'::jsonb,\n  NOW()\n)"
+      },
+      "name": "Log Apify Failure",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1450, 450],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "name": "Continue Loop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2450, 300]
     }
   ],
   "connections": {
@@ -172,7 +233,25 @@
       "main": [
         [
           {
+            "node": "Loop Over Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Sources": {
+      "main": [
+        [
+          {
             "node": "Call Apify YouTube Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Continue Loop",
             "type": "main",
             "index": 0
           }
@@ -194,7 +273,25 @@
       "main": [
         [
           {
+            "node": "Apify Run Succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify Run Succeeded?": {
+      "main": [
+        [
+          {
             "node": "Get Transcript Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Apify Failure",
             "type": "main",
             "index": 0
           }
@@ -239,6 +336,28 @@
         [
           {
             "node": "Log Fetch Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Fetch Result": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Apify Failure": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Sources",
             "type": "main",
             "index": 0
           }

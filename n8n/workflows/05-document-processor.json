@@ -20,7 +20,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT d.id, d.persona_id, d.raw_content, d.title, p.slug as persona_slug\nFROM documents d\nJOIN personas p ON d.persona_id = p.id\nWHERE d.status = 'PENDING_PROCESSING'\nAND d.deleted_at IS NULL\nORDER BY d.created_at ASC\nLIMIT 10"
+        "query": "SELECT d.id, d.persona_id, d.raw_content, d.title, p.slug as persona_slug\nFROM documents d\nJOIN personas p ON d.persona_id = p.id\nWHERE (\n  d.status = 'PENDING_PROCESSING'\n  OR (d.status = 'PROCESSING' AND d.updated_at < NOW() - INTERVAL '30 minutes')\n)\nAND d.deleted_at IS NULL\nORDER BY d.created_at ASC\nLIMIT 10"
       },
       "name": "Get Pending Documents",
       "type": "n8n-nodes-base.postgres",

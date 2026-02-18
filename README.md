@@ -16,7 +16,7 @@ Talk With Legends는 유명 인물(기업가, 투자자, 기술 리더 등)의 �
 | Database | Supabase PostgreSQL + pgvector |
 | ORM | Prisma |
 | Authentication | NextAuth.js (Google, GitHub OAuth) |
-| Data Pipeline | n8n + Apify |
+| Data Pipeline | n8n (Self-Hosted) + Apify |
 | State Management | Zustand |
 | Charts | Recharts |
 
@@ -133,16 +133,20 @@ prisma/migrations/rls-policies.sql
 ### 5. n8n 설정 (데이터 수집)
 
 ```bash
-# 자동 설정 (컨테이너 시작 + 워크플로우 import)
-npm run n8n:setup
+# n8n 컨테이너 시작
+npm run n8n:start
 
-# 또는 개별 명령어
-npm run n8n:start    # n8n 컨테이너 시작
-npm run n8n:stop     # n8n 컨테이너 중지
-npm run n8n:logs     # n8n 로그 확인
+# 워크플로우 JSON 유효성 검증
+npm run n8n:import:dry-run
+
+# 워크플로우 import
+npm run n8n:import
+
+# import + 자동 활성화
+npm run n8n:import:activate
 ```
 
-n8n 비밀번호 설정은 `n8n/.env.example`을 참고하세요.
+크레덴셜 설정은 [n8n/README.md](./n8n/README.md)를 참고하세요.
 
 ### 6. 개발 서버 실행
 
@@ -252,8 +256,9 @@ talk-with/
 │   └── migrations/           # SQL 마이그레이션
 ├── scripts/                  # 유틸리티 스크립트
 ├── n8n/
+│   ├── docker-compose.yml    # n8n Self-Hosted 컨테이너
 │   ├── workflows/            # n8n 워크플로우
-│   └── docker-compose.yml
+│   └── README.md             # n8n Self-Hosted 설정 가이드
 └── docs/                     # 기획 & 설계 문서
 ```
 
@@ -300,7 +305,7 @@ npm run test:coverage # 커버리지 리포트
 
 | 항목 | 수치 |
 |------|------|
-| 테스트 케이스 | 202개 |
+| 테스트 케이스 | 236개 |
 | Statements | 91%+ |
 | Branches | 82%+ |
 | Functions | 97%+ |

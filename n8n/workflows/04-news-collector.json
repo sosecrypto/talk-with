@@ -91,6 +91,34 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-apify-status",
+              "leftValue": "={{ $json.data.status }}",
+              "rightValue": "SUCCEEDED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Apify Run Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
         "method": "GET",
         "url": "=https://api.apify.com/v2/datasets/{{ $json.data.defaultDatasetId }}/items",
         "authentication": "genericCredentialType",
@@ -100,7 +128,7 @@
       "name": "Get News Results",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1250, 300],
+      "position": [1450, 200],
       "credentials": {
         "httpHeaderAuth": {
           "id": "APIFY_CREDENTIAL_ID",
@@ -110,12 +138,12 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst personaInfo = $('Loop Over Personas').first().json;\nconst results = [];\nconst seenUrls = new Set();\n\n// Check existing URLs to avoid duplicates\nconst existingDocs = await $('Get Active Personas').all();\n\nfor (const item of items) {\n  const article = item.json;\n  \n  // Skip if no URL or already seen\n  if (!article.url || seenUrls.has(article.url)) continue;\n  seenUrls.add(article.url);\n  \n  // Skip if title doesn't contain persona name (relevance filter)\n  const nameWords = personaInfo.persona_name.toLowerCase().split(' ');\n  const titleLower = (article.title || '').toLowerCase();\n  const snippetLower = (article.snippet || '').toLowerCase();\n  const isRelevant = nameWords.some(word => \n    titleLower.includes(word) || snippetLower.includes(word)\n  );\n  if (!isRelevant) continue;\n  \n  results.push({\n    json: {\n      external_id: Buffer.from(article.url).toString('base64').substring(0, 64),\n      external_url: article.url,\n      title: article.title || 'News Article',\n      raw_content: article.snippet || article.description || '',\n      author: article.source || 'Unknown',\n      published_at: article.publishedAt ? new Date(article.publishedAt).toISOString() : new Date().toISOString(),\n      language: 'EN',\n      word_count: (article.snippet || '').split(/\\s+/).length,\n      source_metadata: {\n        source_name: article.source,\n        search_query: article.query,\n        thumbnail: article.thumbnail,\n        type: 'news'\n      },\n      persona_id: personaInfo.persona_id,\n      source_id: null,\n      needs_full_content: true\n    }\n  });\n}\n\nreturn results.slice(0, 20); // Limit to 20 articles per persona"
+        "jsCode": "const items = $input.all();\nconst personaInfo = $('Loop Over Personas').first().json;\nconst results = [];\nconst seenUrls = new Set();\n\nfor (const item of items) {\n  const article = item.json;\n  \n  // Skip if no URL or already seen\n  if (!article.url || seenUrls.has(article.url)) continue;\n  seenUrls.add(article.url);\n  \n  // Skip if title doesn't contain persona name (relevance filter)\n  const nameWords = personaInfo.persona_name.toLowerCase().split(' ');\n  const titleLower = (article.title || '').toLowerCase();\n  const snippetLower = (article.snippet || '').toLowerCase();\n  const isRelevant = nameWords.some(word => \n    titleLower.includes(word) || snippetLower.includes(word)\n  );\n  if (!isRelevant) continue;\n  \n  results.push({\n    json: {\n      external_id: Buffer.from(article.url).toString('base64').substring(0, 64),\n      external_url: article.url,\n      title: article.title || 'News Article',\n      raw_content: article.snippet || article.description || '',\n      author: article.source || 'Unknown',\n      published_at: article.publishedAt ? new Date(article.publishedAt).toISOString() : new Date().toISOString(),\n      language: 'EN',\n      word_count: (article.snippet || '').split(/\\s+/).length,\n      source_metadata: {\n        source_name: article.source,\n        search_query: article.query,\n        thumbnail: article.thumbnail,\n        type: 'news'\n      },\n      persona_id: personaInfo.persona_id,\n      source_id: null,\n      needs_full_content: true\n    }\n  });\n}\n\nreturn results.slice(0, 20); // Limit to 20 articles per persona"
       },
       "name": "Filter & Transform News",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1450, 300]
+      "position": [1650, 200]
     },
     {
       "parameters": {
@@ -131,7 +159,7 @@
       "name": "Fetch Full Article Content",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1650, 300],
+      "position": [1850, 200],
       "credentials": {
         "httpHeaderAuth": {
           "id": "APIFY_CREDENTIAL_ID",
@@ -148,7 +176,7 @@
       "name": "Save News Articles",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1850, 300],
+      "position": [2050, 200],
       "credentials": {
         "postgres": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -165,7 +193,7 @@
       "name": "Log Fetch Result",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [2050, 300],
+      "position": [2250, 200],
       "credentials": {
         "postgres": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -174,11 +202,20 @@
       }
     },
     {
-      "parameters": {},
-      "name": "Continue Loop",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [2250, 300]
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO fetch_logs (id, source_id, status, error_message, metadata, created_at)\nVALUES (\n  gen_random_uuid(),\n  NULL,\n  'error',\n  'Apify news scraper failed with status: {{ $json.data.status }}',\n  '{{ JSON.stringify({ persona_id: $(\"Loop Over Personas\").first().json.persona_id, persona_name: $(\"Loop Over Personas\").first().json.persona_name, apify_run_id: $json.data.id, status: $json.data.status, type: \"news_search\" }).replace(/'/g, \"''\") }}'::jsonb,\n  NOW()\n)"
+      },
+      "name": "Log Apify Failure",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1450, 450],
+      "credentials": {
+        "postgres": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase PostgreSQL"
+        }
+      }
     }
   ],
   "connections": {
@@ -212,13 +249,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "Continue Loop",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -237,7 +267,25 @@
       "main": [
         [
           {
+            "node": "Apify Run Succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify Run Succeeded?": {
+      "main": [
+        [
+          {
             "node": "Get News Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Apify Failure",
             "type": "main",
             "index": 0
           }
@@ -289,6 +337,17 @@
       ]
     },
     "Log Fetch Result": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Personas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Apify Failure": {
       "main": [
         [
           {

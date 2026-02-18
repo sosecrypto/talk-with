@@ -81,7 +81,7 @@
 
 ### 3.2 코드 품질
 - [x] ESLint 설정 및 전체 lint 클린
-- [x] Vitest + Testing Library 테스트 인프라 (114개 케이스, 91%+ 커버리지)
+- [x] Vitest + Testing Library 테스트 인프라 (236개 케이스, 91%+ 커버리지)
 
 ### 3.3 추가 기능
 - [x] 반응형 모바일 UI 최적화 (사이드바 overlay, dvh, 그리드 반응형, enterkeyhint)

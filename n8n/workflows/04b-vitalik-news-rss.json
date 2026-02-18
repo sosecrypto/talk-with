@@ -128,7 +128,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO fetch_logs (id, status, items_found, items_new, metadata, created_at)\nVALUES (\n  gen_random_uuid(),\n  'success',\n  {{ $('Parse & Filter for Vitalik').all().length }},\n  {{ $('Save News Articles').all().filter(i => i.json.id).length }},\n  '{\"persona\": \"vitalik-buterin\", \"type\": \"news_rss\", \"sources\": [\"CoinDesk\", \"Cointelegraph\", \"Decrypt\"]}'::jsonb,\n  NOW()\n)"
+        "query": "INSERT INTO fetch_logs (id, source_id, status, items_found, items_new, metadata, created_at)\nVALUES (\n  gen_random_uuid(),\n  (SELECT s.id FROM sources s JOIN personas p ON s.persona_id = p.id WHERE p.slug = 'vitalik-buterin' AND s.type = 'NEWS_RSS' LIMIT 1),\n  'success',\n  {{ $('Parse & Filter for Vitalik').all().length }},\n  {{ $('Save News Articles').all().filter(i => i.json.id).length }},\n  '{\"persona\": \"vitalik-buterin\", \"type\": \"news_rss\", \"sources\": [\"CoinDesk\", \"Cointelegraph\", \"Decrypt\"]}'::jsonb,\n  NOW()\n)"
       },
       "name": "Log Fetch Result",
       "type": "n8n-nodes-base.postgres",
