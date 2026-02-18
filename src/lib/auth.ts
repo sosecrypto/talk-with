@@ -2,6 +2,7 @@ import { NextAuthOptions, getServerSession } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import GitHubProvider from 'next-auth/providers/github'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import { prisma } from '@/lib/prisma'
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -46,12 +47,25 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub
+        session.user.role = (token.role as string) || 'user'
       }
       return session
     },
     async jwt({ token, user }) {
       if (user) {
         token.sub = user.id
+      }
+      // Fetch role from DB
+      if (token.sub) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: { role: true },
+          })
+          token.role = dbUser?.role || 'user'
+        } catch {
+          token.role = 'user'
+        }
       }
       return token
     },

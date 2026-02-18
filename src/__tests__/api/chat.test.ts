@@ -490,6 +490,95 @@ describe('POST /api/chat', () => {
     })
   })
 
+  describe('멀티모달 이미지 첨부', () => {
+    it('attachments가 있으면 Claude Vision content block을 구성한다', async () => {
+      mocks.getServerSession.mockResolvedValue(MOCK_SESSION)
+      mockPrisma.conversation.create.mockResolvedValue({ id: 'conv-new', messages: [] } as never)
+      mockPrisma.message.create.mockResolvedValue({ id: 'msg-1' } as never)
+      mockPrisma.conversation.update.mockResolvedValue({} as never)
+
+      const mockStream = createMockStream(['Image analysis response'])
+      mocks.anthropicStream.mockResolvedValue(mockStream)
+      mocks.generateTitle.mockResolvedValue('Image Chat')
+
+      const req = createRequest({
+        message: 'What is in this image?',
+        attachments: [{ url: 'https://example.com/image.png', type: 'image', name: 'image.png' }],
+      })
+      const response = await POST(req)
+      await readSSEStream(response)
+
+      expect(mocks.anthropicStream).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messages: expect.arrayContaining([
+            expect.objectContaining({
+              role: 'user',
+              content: expect.arrayContaining([
+                expect.objectContaining({ type: 'image', source: { type: 'url', url: 'https://example.com/image.png' } }),
+                expect.objectContaining({ type: 'text', text: 'What is in this image?' }),
+              ]),
+            }),
+          ]),
+        })
+      )
+    })
+
+    it('attachments가 있으면 MessageAttachment를 DB에 저장한다', async () => {
+      mocks.getServerSession.mockResolvedValue(MOCK_SESSION)
+      mockPrisma.conversation.create.mockResolvedValue({ id: 'conv-new', messages: [] } as never)
+      mockPrisma.message.create.mockResolvedValue({ id: 'msg-user-1' } as never)
+      mockPrisma.conversation.update.mockResolvedValue({} as never)
+
+      const mockStream = createMockStream(['Response'])
+      mocks.anthropicStream.mockResolvedValue(mockStream)
+      mocks.generateTitle.mockResolvedValue('Test')
+
+      const req = createRequest({
+        message: 'Describe this',
+        attachments: [{ url: 'https://example.com/photo.jpg', type: 'image', name: 'photo.jpg' }],
+      })
+      const response = await POST(req)
+      await readSSEStream(response)
+
+      expect(mockPrisma.messageAttachment.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            messageId: 'msg-user-1',
+            url: 'https://example.com/photo.jpg',
+            type: 'image',
+            name: 'photo.jpg',
+          }),
+        })
+      )
+    })
+
+    it('attachments가 없으면 텍스트만 전송한다', async () => {
+      mocks.getServerSession.mockResolvedValue(MOCK_SESSION)
+      mockPrisma.conversation.create.mockResolvedValue({ id: 'conv-new', messages: [] } as never)
+      mockPrisma.message.create.mockResolvedValue({} as never)
+      mockPrisma.conversation.update.mockResolvedValue({} as never)
+
+      const mockStream = createMockStream(['Reply'])
+      mocks.anthropicStream.mockResolvedValue(mockStream)
+      mocks.generateTitle.mockResolvedValue('Test')
+
+      const req = createRequest({ message: 'Hello' })
+      const response = await POST(req)
+      await readSSEStream(response)
+
+      expect(mocks.anthropicStream).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messages: expect.arrayContaining([
+            expect.objectContaining({
+              role: 'user',
+              content: 'Hello',
+            }),
+          ]),
+        })
+      )
+    })
+  })
+
   describe('에러 처리', () => {
     it('잘못된 JSON body면 500을 반환한다', async () => {
       mocks.getServerSession.mockResolvedValue(MOCK_SESSION)

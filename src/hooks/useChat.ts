@@ -3,8 +3,30 @@
 import { useState, useCallback } from 'react'
 import { Message, Conversation } from '@/types/chat'
 
+interface ImagePreview {
+  file: File
+  previewUrl: string
+}
+
 interface UseChatOptions {
   onError?: (error: string) => void
+}
+
+async function uploadImage(file: File): Promise<string> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to upload image')
+  }
+
+  const data = await response.json()
+  return data.url
 }
 
 export function useChat(options: UseChatOptions = {}) {
@@ -15,8 +37,8 @@ export function useChat(options: UseChatOptions = {}) {
   const [personaSlug, setPersonaSlug] = useState<string | null>(null)
 
   const sendMessage = useCallback(
-    async (content: string, currentPersonaSlug?: string | null) => {
-      if (!content.trim() || isStreaming) return
+    async (content: string, currentPersonaSlug?: string | null, attachments?: ImagePreview[]) => {
+      if ((!content.trim() && (!attachments || attachments.length === 0)) || isStreaming) return
 
       const userMessage: Message = {
         id: `temp-${Date.now()}`,
@@ -40,17 +62,32 @@ export function useChat(options: UseChatOptions = {}) {
       setMessages((prev) => [...prev, assistantMessage])
 
       try {
+        // Upload images if any
+        const uploadedAttachments: Array<{ url: string; type: string; name: string }> = []
+        if (attachments?.length) {
+          for (const att of attachments) {
+            const url = await uploadImage(att.file)
+            uploadedAttachments.push({ url, type: 'image', name: att.file.name })
+          }
+        }
+
         // Use passed personaSlug or current state
         const activePersonaSlug = currentPersonaSlug !== undefined ? currentPersonaSlug : personaSlug
+
+        const body: Record<string, unknown> = {
+          message: content,
+          conversationId,
+          personaSlug: activePersonaSlug,
+        }
+
+        if (uploadedAttachments.length > 0) {
+          body.attachments = uploadedAttachments
+        }
 
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: content,
-            conversationId,
-            personaSlug: activePersonaSlug,
-          }),
+          body: JSON.stringify(body),
         })
 
         if (!response.ok) {

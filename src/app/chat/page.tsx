@@ -9,10 +9,15 @@ import { PersonaSelector } from '@/components/persona/PersonaSelector'
 import { useChat } from '@/hooks/useChat'
 import { useConversations } from '@/hooks/useConversations'
 import { usePersonas, Persona } from '@/hooks/usePersonas'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { useExport } from '@/hooks/useExport'
 
 export default function ChatPage() {
   const { data: session } = useSession()
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const isMobile = useMediaQuery('(max-width: 767px)')
+  const { isExporting, exportConversation } = useExport()
+  const [showExportMenu, setShowExportMenu] = useState(false)
 
   const {
     personas,
@@ -76,17 +81,30 @@ export default function ChatPage() {
     selectPersona(persona)
   }
 
-  const handleSendMessage = (content: string) => {
-    sendMessage(content, selectedPersona?.slug)
+  const handleSendMessage = (content: string, attachments?: Array<{ file: File; previewUrl: string }>) => {
+    sendMessage(content, selectedPersona?.slug, attachments)
+    if (isMobile && sidebarOpen) {
+      setSidebarOpen(false)
+    }
   }
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-900">
+    <div className="flex h-dvh bg-white dark:bg-gray-900">
+      {/* Mobile Backdrop */}
+      {isMobile && sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 transition-opacity"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <div
         className={`${
-          sidebarOpen ? 'w-72' : 'w-0'
-        } transition-all duration-300 overflow-hidden border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col`}
+          isMobile
+            ? `fixed inset-y-0 left-0 z-40 w-72 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
+            : `${sidebarOpen ? 'w-72' : 'w-0'} transition-all duration-300 overflow-hidden`
+        } border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col`}
       >
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Talk With Legends</h1>
@@ -211,6 +229,41 @@ export default function ChatPage() {
               {title || (selectedPersona ? `Chat with ${selectedPersona.name}` : 'New Chat')}
             </h2>
           </div>
+
+          {/* Export Button */}
+          {conversationId && messages.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                disabled={isExporting}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 disabled:opacity-50"
+                title="Export conversation"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+              </button>
+              {showExportMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
+                  <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 py-1">
+                    <button
+                      onClick={() => { exportConversation(conversationId, 'json'); setShowExportMenu(false) }}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      JSON
+                    </button>
+                    <button
+                      onClick={() => { exportConversation(conversationId, 'markdown'); setShowExportMenu(false) }}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Markdown
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Clear Persona Button */}
           {selectedPersona && (

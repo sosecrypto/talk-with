@@ -95,10 +95,20 @@ export async function POST(request: NextRequest) {
       userId = session.user.id
     }
 
-    const { message, conversationId, personaSlug } = await request.json()
+    const { message, conversationId, personaSlug, attachments } = await request.json()
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
+    }
+
+    // Validate attachments
+    const validAttachments: Array<{ url: string; type: string; name: string }> = []
+    if (Array.isArray(attachments)) {
+      for (const att of attachments) {
+        if (att?.url && att?.type && att?.name) {
+          validAttachments.push({ url: att.url, type: att.type, name: att.name })
+        }
+      }
     }
 
     let conversation
@@ -144,7 +154,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Save user message
-    await prisma.message.create({
+    const userMsg = await prisma.message.create({
       data: {
         role: 'user',
         content: message,
@@ -152,14 +162,40 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Build message history
-    const messages = [
-      ...conversation.messages.map((msg) => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-      })),
-      { role: 'user' as const, content: message },
-    ]
+    // Save attachments if any
+    for (const att of validAttachments) {
+      await prisma.messageAttachment.create({
+        data: {
+          messageId: userMsg.id,
+          url: att.url,
+          type: att.type,
+          name: att.name,
+        },
+      })
+    }
+
+    // Build message history - construct last user message with vision content if attachments exist
+    const historyMessages = conversation.messages.map((msg) => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content,
+    }))
+
+    const imageAttachments = validAttachments.filter(att => att.type === 'image')
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let messages: any[]
+    if (imageAttachments.length > 0) {
+      const contentBlocks = [
+        ...imageAttachments.map(att => ({
+          type: 'image',
+          source: { type: 'url', url: att.url },
+        })),
+        { type: 'text', text: message },
+      ]
+      messages = [...historyMessages, { role: 'user', content: contentBlocks }]
+    } else {
+      messages = [...historyMessages, { role: 'user', content: message }]
+    }
 
     // Generate system prompt with RAG context
     let systemPrompt = 'You are a helpful assistant.'

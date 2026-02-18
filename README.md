@@ -48,10 +48,16 @@ Talk With Legends는 유명 인물(기업가, 투자자, 기술 리더 등)의 �
 - [x] 페르소나 API
 - [x] 페르소나 선택 UI
 
-### Phase 3 (진행 중) - UI/UX 고도화
+### Phase 3 (완료) - UI/UX 고도화
 - [x] 다크모드 지원 (클래스 기반 `.dark`)
 - [x] Agentation 도구 추가
 - [x] 마크다운 렌더링 (AI 응답)
+
+### Phase 4 (완료) - 기능 확장
+- [x] 반응형 모바일 UI (사이드바 overlay, dvh, 그리드 반응형)
+- [x] 멀티모달 이미지 분석 (Claude Vision, 드래그앤드롭 첨부)
+- [x] 대화 내보내기 (JSON, Markdown)
+- [x] 관리자 대시보드 (통계, 페르소나 CRUD, 사용자 관리, 데이터 모니터링, 분석)
 
 자세한 로드맵은 [ROADMAP.md](./ROADMAP.md)를 참조하세요.
 
@@ -153,8 +159,29 @@ POST /api/chat
 {
   "message": "Your question here",
   "personaSlug": "elon-musk",  // optional
-  "conversationId": "..."      // optional
+  "conversationId": "...",     // optional
+  "attachments": [             // optional (멀티모달)
+    { "url": "https://...", "type": "image", "name": "photo.jpg" }
+  ]
 }
+```
+
+### 대화 내보내기
+```
+GET /api/conversations/:id/export?format=json|markdown
+```
+
+### 관리자 (role=admin 필요)
+```
+GET    /api/admin/stats                # 전체 통계
+GET    /api/admin/personas             # 페르소나 목록 (DRAFT 포함)
+POST   /api/admin/personas             # 페르소나 생성
+PATCH  /api/admin/personas/:slug       # 페르소나 수정
+DELETE /api/admin/personas/:slug       # 페르소나 비활성화
+GET    /api/admin/users?page=1&limit=20 # 사용자 목록
+PATCH  /api/admin/users/:id            # 사용자 role 변경
+GET    /api/admin/sources              # 데이터 소스 현황
+GET    /api/admin/analytics            # 대화 분석
 ```
 
 ## 프로젝트 구조
@@ -240,7 +267,7 @@ npm run test:coverage # 커버리지 리포트
 
 | 항목 | 수치 |
 |------|------|
-| 테스트 케이스 | 114개 |
+| 테스트 케이스 | 177개 |
 | Statements | 91%+ |
 | Branches | 82%+ |
 | Functions | 97%+ |

@@ -7,10 +7,15 @@ import { Persona } from '@/hooks/usePersonas'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 
+interface ImagePreview {
+  file: File
+  previewUrl: string
+}
+
 interface ChatWindowProps {
   messages: Message[]
   isStreaming: boolean
-  onSendMessage: (content: string) => void
+  onSendMessage: (content: string, attachments?: ImagePreview[]) => void
   selectedPersona?: Persona | null
   personas?: Persona[]
   onSelectPersona?: (persona: Persona) => void
@@ -151,11 +156,11 @@ export function ChatWindow({
 
             {/* Persona Grid */}
             {!selectedPersona && personas.length > 0 && (
-              <div className="relative z-10 w-full max-w-5xl px-4">
+              <div className="relative z-10 w-full max-w-5xl px-2 sm:px-4">
                 <h3 className="text-center text-sm font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-8">
                   Choose a Legend
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
                   {personas.slice(0, 8).map((persona, idx) => (
                     <button
                       key={persona.id}
@@ -269,7 +274,7 @@ export function ChatWindow({
             )}
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
             {messages.map((message, idx) => (
               <ChatMessage
                 key={message.id}

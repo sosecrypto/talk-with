@@ -46,7 +46,7 @@ export function PersonaSelector({
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all min-w-[160px] max-w-[220px] ${
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all w-full ${
           selectedPersona
             ? 'bg-gradient-to-r text-white shadow-md'
             : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
