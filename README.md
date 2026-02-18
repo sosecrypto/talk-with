@@ -12,7 +12,7 @@ Talk With Legends는 유명 인물(기업가, 투자자, 기술 리더 등)의 �
 |------|------|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 |
 | Backend | Next.js API Routes |
-| AI | Anthropic Claude API (Chat), OpenAI (Embeddings) |
+| AI | Anthropic Claude API (Chat), OpenAI (Embeddings), Cohere (Reranking) |
 | Database | Supabase PostgreSQL + pgvector |
 | ORM | Prisma |
 | Authentication | NextAuth.js (Google, GitHub OAuth) |
@@ -80,6 +80,7 @@ cp .env.example .env.local
 - `SUPABASE_SERVICE_ROLE_KEY` - Supabase 서비스 롤 키
 - `ANTHROPIC_API_KEY` - Claude API 키
 - `OPENAI_API_KEY` - OpenAI API 키 (임베딩용)
+- `COHERE_API_KEY` - Cohere API 키 (Reranking용)
 - `NEXTAUTH_SECRET` - NextAuth 시크릿
 - OAuth 제공자 키 (Google, GitHub)
 
@@ -133,13 +134,16 @@ GET  /api/personas           # 페르소나 목록
 GET  /api/personas/:slug     # 페르소나 상세
 ```
 
-### RAG 검색
+### RAG 검색 (하이브리드 + Reranking)
 ```
 POST /api/rag/search
 {
   "query": "What do you think about AI?",
   "personaSlug": "elon-musk",
-  "topK": 5
+  "topK": 5,
+  "useHybrid": true,        // default: true (false시 vector-only)
+  "useRerank": true,         // default: true (Cohere rerank-v3.5)
+  "keywordWeight": 0.3      // 키워드 가중치 (0~1, default: 0.3)
 }
 ```
 
@@ -175,6 +179,8 @@ talk-with/
 │   ├── lib/
 │   │   ├── anthropic.ts      # Claude 클라이언트
 │   │   ├── openai.ts         # OpenAI 클라이언트 (임베딩)
+│   │   ├── cohere.ts         # Cohere 클라이언트 (Reranking)
+│   │   ├── reranker.ts       # Rerank 유틸리티
 │   │   ├── prompt-generator.ts # 페르소나 프롬프트 생성
 │   │   └── ...
 │   └── types/                # TypeScript 타입
@@ -216,8 +222,9 @@ talk-with/
 └───────────────────────────┬─────────────────────────────────┘
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     RAG PIPELINE                             │
-│  Query → Embed → Vector Search → Context → Claude → Response│
+│                 RAG PIPELINE (Hybrid Search + Reranking)          │
+│  Query → Embed + Tokenize → Vector + Keyword → RRF Fusion       │
+│  → Cohere Rerank (rerank-v3.5) → Context → Claude → Response    │
 └─────────────────────────────────────────────────────────────┘
 ```
 

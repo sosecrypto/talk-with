@@ -6,6 +6,7 @@ import { anthropic, generateTitle } from '@/lib/anthropic'
 import { generatePersonaPrompt, getPersonaBySlug } from '@/lib/prompt-generator'
 import { generateEmbedding } from '@/lib/openai'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { rerankChunks } from '@/lib/reranker'
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -38,11 +39,16 @@ async function searchRAG(query: string, personaSlug: string, topK = 5): Promise<
     const queryEmbedding = await generateEmbedding(query)
     const supabase = getSupabaseAdmin()
 
-    const { data: chunks, error } = await supabase.rpc('match_chunks', {
+    const fetchCount = topK * 3
+
+    const { data: chunks, error } = await supabase.rpc('hybrid_search_chunks', {
       query_embedding: queryEmbedding,
+      query_text: query,
       persona_slug: personaSlug,
-      match_threshold: 0.3,
-      match_count: topK,
+      match_count: fetchCount,
+      vector_threshold: 0.3,
+      keyword_weight: 0.3,
+      rrf_k: 60,
     })
 
     if (error) {
@@ -50,7 +56,23 @@ async function searchRAG(query: string, personaSlug: string, topK = 5): Promise<
       return []
     }
 
-    return chunks || []
+    const candidates: RAGChunk[] = (chunks || []).map((chunk: RAGChunk & { combined_score?: number }) => ({
+      id: chunk.id,
+      content: chunk.content,
+      document_title: chunk.document_title,
+      similarity: chunk.combined_score ?? chunk.similarity,
+    }))
+
+    if (candidates.length === 0) return []
+
+    const reranked = await rerankChunks(query, candidates, topK)
+
+    return reranked.map(chunk => ({
+      id: chunk.id,
+      content: chunk.content,
+      document_title: chunk.document_title,
+      similarity: chunk.rerankScore || chunk.similarity,
+    }))
   } catch (error) {
     console.error('RAG search failed:', error)
     return []
@@ -161,6 +183,9 @@ export async function POST(request: NextRequest) {
               content: c.content,
               documentTitle: c.document_title,
               similarity: c.similarity,
+              keywordRank: null,
+              combinedScore: null,
+              rerankScore: c.similarity,
               metadata: null,
             })),
           }

@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   generateEmbedding: vi.fn(),
   rpc: vi.fn(),
   getServerSession: vi.fn(),
+  rerankChunks: vi.fn(),
 }))
 
 vi.mock('next-auth', () => ({
@@ -43,6 +44,10 @@ vi.mock('@/lib/openai', () => ({
 
 vi.mock('@/lib/supabase', () => ({
   getSupabaseAdmin: () => ({ rpc: mocks.rpc }),
+}))
+
+vi.mock('@/lib/reranker', () => ({
+  rerankChunks: mocks.rerankChunks,
 }))
 
 import { POST } from '@/app/api/chat/route'
@@ -74,6 +79,11 @@ describe('POST /api/chat', () => {
     resetPrismaMocks()
     Object.values(mocks).forEach(m => m.mockReset())
     mocks.generateEmbedding.mockResolvedValue(Array(1536).fill(0))
+    // 기본 reranker: rerankScore 추가하여 그대로 반환
+    mocks.rerankChunks.mockImplementation(
+      (_q: string, chunks: Array<{ id: string; similarity: number }>) =>
+        Promise.resolve(chunks.map((c: { id: string; similarity: number }) => ({ ...c, rerankScore: c.similarity })))
+    )
   })
 
   describe('인증', () => {
@@ -366,6 +376,116 @@ describe('POST /api/chat', () => {
             messageCount: { increment: 2 },
           }),
         })
+      )
+    })
+  })
+
+  describe('하이브리드 검색', () => {
+    it('searchRAG()가 hybrid_search_chunks를 호출한다', async () => {
+      mocks.getServerSession.mockResolvedValue(MOCK_SESSION)
+      mocks.getPersonaBySlug.mockResolvedValue({ id: 'p-1', slug: 'elon-musk' })
+      mockPrisma.conversation.create.mockResolvedValue({ id: 'conv-new', messages: [] } as never)
+      mockPrisma.message.create.mockResolvedValue({} as never)
+      mockPrisma.conversation.update.mockResolvedValue({} as never)
+
+      mocks.rpc.mockResolvedValue({ data: MOCK_RAG_CHUNKS_RAW, error: null })
+      mocks.generatePersonaPrompt.mockResolvedValue('You are Elon Musk...')
+      mocks.generateTitle.mockResolvedValue('Test Title')
+
+      const mockStream = createMockStream(['AI response'])
+      mocks.anthropicStream.mockResolvedValue(mockStream)
+
+      const req = createRequest({ message: 'Tell me about Tesla', personaSlug: 'elon-musk' })
+      const response = await POST(req)
+      await readSSEStream(response)
+
+      expect(mocks.rpc).toHaveBeenCalledWith('hybrid_search_chunks', expect.objectContaining({
+        query_text: 'Tell me about Tesla',
+        persona_slug: 'elon-musk',
+      }))
+    })
+
+    it('hybrid_search_chunks에 query_text로 사용자 메시지를 전달한다', async () => {
+      mocks.getServerSession.mockResolvedValue(MOCK_SESSION)
+      mocks.getPersonaBySlug.mockResolvedValue({ id: 'p-1', slug: 'elon-musk' })
+      mockPrisma.conversation.create.mockResolvedValue({ id: 'conv-new', messages: [] } as never)
+      mockPrisma.message.create.mockResolvedValue({} as never)
+      mockPrisma.conversation.update.mockResolvedValue({} as never)
+
+      mocks.rpc.mockResolvedValue({ data: [], error: null })
+      mocks.generatePersonaPrompt.mockResolvedValue('You are Elon Musk...')
+      mocks.generateTitle.mockResolvedValue('Test')
+
+      const mockStream = createMockStream(['response'])
+      mocks.anthropicStream.mockResolvedValue(mockStream)
+
+      const req = createRequest({ message: 'What about Starship?', personaSlug: 'elon-musk' })
+      const response = await POST(req)
+      await readSSEStream(response)
+
+      expect(mocks.rpc).toHaveBeenCalledWith('hybrid_search_chunks', expect.objectContaining({
+        query_text: 'What about Starship?',
+      }))
+    })
+  })
+
+  describe('Reranking', () => {
+    it('searchRAG() 내부에서 rerankChunks를 호출한다', async () => {
+      mocks.getServerSession.mockResolvedValue(MOCK_SESSION)
+      mocks.getPersonaBySlug.mockResolvedValue({ id: 'p-1', slug: 'elon-musk' })
+      mockPrisma.conversation.create.mockResolvedValue({ id: 'conv-new', messages: [] } as never)
+      mockPrisma.message.create.mockResolvedValue({} as never)
+      mockPrisma.conversation.update.mockResolvedValue({} as never)
+
+      mocks.rpc.mockResolvedValue({ data: MOCK_RAG_CHUNKS_RAW, error: null })
+      mocks.rerankChunks.mockResolvedValue(
+        MOCK_RAG_CHUNKS_RAW.map(c => ({
+          ...c,
+          rerankScore: 0.95,
+        }))
+      )
+      mocks.generatePersonaPrompt.mockResolvedValue('You are Elon Musk...')
+      mocks.generateTitle.mockResolvedValue('Test Title')
+
+      const mockStream = createMockStream(['AI response'])
+      mocks.anthropicStream.mockResolvedValue(mockStream)
+
+      const req = createRequest({ message: 'Tell me about AI', personaSlug: 'elon-musk' })
+      const response = await POST(req)
+      await readSSEStream(response)
+
+      expect(mocks.rerankChunks).toHaveBeenCalledWith(
+        'Tell me about AI',
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'chunk-1' }),
+        ]),
+        5,
+      )
+    })
+
+    it('reranker에 사용자 메시지가 query로 전달된다', async () => {
+      mocks.getServerSession.mockResolvedValue(MOCK_SESSION)
+      mocks.getPersonaBySlug.mockResolvedValue({ id: 'p-1', slug: 'elon-musk' })
+      mockPrisma.conversation.create.mockResolvedValue({ id: 'conv-new', messages: [] } as never)
+      mockPrisma.message.create.mockResolvedValue({} as never)
+      mockPrisma.conversation.update.mockResolvedValue({} as never)
+
+      mocks.rpc.mockResolvedValue({ data: MOCK_RAG_CHUNKS_RAW, error: null })
+      mocks.rerankChunks.mockResolvedValue([])
+      mocks.generatePersonaPrompt.mockResolvedValue('You are Elon Musk...')
+      mocks.generateTitle.mockResolvedValue('Test')
+
+      const mockStream = createMockStream(['response'])
+      mocks.anthropicStream.mockResolvedValue(mockStream)
+
+      const req = createRequest({ message: 'What about Starship?', personaSlug: 'elon-musk' })
+      const response = await POST(req)
+      await readSSEStream(response)
+
+      expect(mocks.rerankChunks).toHaveBeenCalledWith(
+        'What about Starship?',
+        expect.any(Array),
+        5,
       )
     })
   })

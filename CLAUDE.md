@@ -7,7 +7,7 @@ RAG-based AI persona chatbot platform. Collects interviews, social media, and ne
 ### Tech Stack
 - **Framework**: Next.js 16 (App Router), React 19, TypeScript
 - **Styling**: Tailwind CSS 4
-- **AI**: Anthropic Claude API (chat), OpenAI Embeddings (text-embedding-3-small)
+- **AI**: Anthropic Claude API (chat), OpenAI Embeddings (text-embedding-3-small), Cohere Rerank (rerank-v3.5)
 - **DB**: Supabase PostgreSQL + pgvector (vector search)
 - **ORM**: Prisma 5
 - **Auth**: NextAuth.js (Google, GitHub OAuth)
@@ -25,7 +25,7 @@ talk-with/
 │   │   │   ├── chat/                # SSE streaming chat
 │   │   │   ├── conversations/       # Conversation CRUD
 │   │   │   ├── personas/            # Persona list/detail
-│   │   │   ├── rag/search/          # Vector semantic search
+│   │   │   ├── rag/search/          # Hybrid search (vector + keyword)
 │   │   │   └── upload/              # Supabase file upload
 │   │   ├── chat/                    # Chat page
 │   │   └── login/                   # Login page
@@ -37,6 +37,8 @@ talk-with/
 │   ├── lib/
 │   │   ├── anthropic.ts          # Claude client
 │   │   ├── openai.ts             # OpenAI embeddings client
+│   │   ├── cohere.ts             # Cohere rerank client
+│   │   ├── reranker.ts           # Rerank utility (rerankChunks)
 │   │   ├── prompt-generator.ts   # Persona system prompt generation (core)
 │   │   ├── auth.ts               # NextAuth config
 │   │   ├── prisma.ts             # Prisma singleton
@@ -53,13 +55,15 @@ talk-with/
 └── docs/                   # Planning docs
 ```
 
-## RAG Pipeline
+## RAG Pipeline (Hybrid Search + Reranking)
 
 ```
-1. User query → OpenAI embedding (1536 dimensions)
-2. pgvector match_chunks RPC → Top-K similarity search (K=5, threshold=0.3)
-3. Related chunks + persona characteristics → system prompt composition
-4. Claude API → First-person persona response (SSE streaming)
+1. User query → OpenAI embedding (1536 dim) + tsvector tokenization
+2. hybrid_search_chunks RPC → Vector similarity + Keyword FTS (over-fetch: topK×3)
+3. RRF (Reciprocal Rank Fusion) → Combined ranking (k=60, keyword_weight=0.3)
+4. Cohere Rerank (rerank-v3.5) → Precision re-ranking → Top-K selection
+5. Related chunks + persona characteristics → system prompt composition
+6. Claude API → First-person persona response (SSE streaming)
 ```
 
 ## Data Collection Pipeline (n8n)
@@ -101,6 +105,7 @@ SUPABASE_SERVICE_ROLE_KEY=       # Server only, never expose to client
 # AI
 ANTHROPIC_API_KEY=               # Claude (chat)
 OPENAI_API_KEY=                  # Embeddings only
+COHERE_API_KEY=                  # Reranking (rerank-v3.5)
 
 # NextAuth
 NEXTAUTH_URL=http://localhost:3000

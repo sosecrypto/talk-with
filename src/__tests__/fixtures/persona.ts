@@ -140,6 +140,36 @@ export const MOCK_RAG_CHUNKS_RAW = MOCK_RAG_CHUNKS.map(c => ({
   metadata: c.metadata,
 }))
 
+export const MOCK_HYBRID_CHUNKS_RAW = [
+  {
+    id: 'chunk-1',
+    content: 'I think the most important thing is to have a future that is exciting and inspiring.',
+    document_title: 'Interview with Elon Musk 2024',
+    similarity: 0.89,
+    keyword_rank: 2,
+    combined_score: 0.0162,
+    metadata: null,
+  },
+  {
+    id: 'chunk-2',
+    content: 'Tesla is accelerating the world transition to sustainable energy.',
+    document_title: 'Tesla Annual Meeting',
+    similarity: 0.82,
+    keyword_rank: 1,
+    combined_score: 0.0160,
+    metadata: null,
+  },
+  {
+    id: 'chunk-3',
+    content: 'SpaceX is making progress on Starship, the vehicle that will take humans to Mars.',
+    document_title: 'SpaceX Update',
+    similarity: 0.75,
+    keyword_rank: null,
+    combined_score: 0.0113,
+    metadata: null,
+  },
+]
+
 export const MOCK_PERSONA_LIST = [
   {
     id: 'persona-1',

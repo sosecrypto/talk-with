@@ -56,8 +56,8 @@
 - [x] 페르소나 프롬프트 엔지니어링 (`prompt-generator.ts`)
 - [x] 특성 추출 파이프라인 (Claude API, 4시간 주기)
 - [x] RAG 검색 API (`/api/rag/search`)
-- [ ] 하이브리드 검색 (키워드 + 벡터)
-- [ ] 검색 결과 재순위화 (Re-ranking)
+- [x] 하이브리드 검색 (키워드 + 벡터, RRF)
+- [x] 검색 결과 재순위화 (Cohere Rerank v3.5)
 
 ### 2.4 페르소나 관리
 - [x] 페르소나 목록/상세 API
@@ -117,7 +117,7 @@ POST   /api/chat                  # SSE 스트리밍 채팅
 GET    /api/conversations         # 대화 목록 (pagination)
 POST   /api/conversations         # 대화 생성
 DELETE /api/conversations/:id     # 대화 삭제
-POST   /api/rag/search            # 벡터 유사도 검색
+POST   /api/rag/search            # 하이브리드 검색 (벡터 + 키워드)
 POST   /api/upload                # 파일 업로드
 ```
 
@@ -127,8 +127,8 @@ POST   /api/upload                # 파일 업로드
 
 | 단계 | 기능 | 우선순위 | 상태 |
 |------|------|----------|------|
-| 2.3 | 하이브리드 검색 | 중간 | 예정 |
-| 2.3 | 검색 결과 재순위화 | 낮음 | 예정 |
+| 2.3 | 하이브리드 검색 | 중간 | 완료 |
+| 2.3 | 검색 결과 재순위화 | 낮음 | 완료 |
 | 2.4 | 관리자 대시보드 | 중간 | 예정 |
 | 3.3 | 반응형 모바일 UI | 중간 | 예정 |
 | 3.3 | 사용자 설정 페이지 | 낮음 | 예정 |
