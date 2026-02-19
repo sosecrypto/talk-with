@@ -78,7 +78,9 @@ vi.mock('@/lib/prisma', () => ({
       delete: vi.fn(),
     },
     conversationFeedback: {
+      findFirst: vi.fn(),
       findMany: vi.fn(),
+      create: vi.fn(),
       count: vi.fn(),
       aggregate: vi.fn(),
       groupBy: vi.fn(),

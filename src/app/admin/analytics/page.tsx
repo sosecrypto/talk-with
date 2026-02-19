@@ -5,6 +5,8 @@ import { TrendLineChart } from '@/components/admin/charts/TrendLineChart'
 import { PersonaBarChart } from '@/components/admin/charts/PersonaBarChart'
 import { TokenPieChart } from '@/components/admin/charts/TokenPieChart'
 import { FeedbackChart } from '@/components/admin/charts/FeedbackChart'
+import { QualityBarChart } from '@/components/admin/charts/QualityBarChart'
+import { FeedbackTrendChart } from '@/components/admin/charts/FeedbackTrendChart'
 
 interface PersonaStat {
   personaId: string
@@ -38,13 +40,37 @@ interface AnalyticsData {
   }>
 }
 
-type Tab = 'overview' | 'personas' | 'tokens' | 'feedback'
+interface QualityData {
+  overallQuality: {
+    thumbsUpRate: number
+    avgRating: number
+    totalFeedbackCount: number
+    thumbsUpCount: number
+    thumbsDownCount: number
+  }
+  personaQuality: Array<{
+    personaName: string
+    thumbsUpRate: number
+    totalFeedback: number
+    avgRating: number | null
+  }>
+  feedbackTrend: Array<{
+    date: string
+    thumbsUpCount: number
+    thumbsDownCount: number
+    thumbsUpRate: number
+  }>
+  typeDistribution: Array<{ type: string; count: number }>
+}
+
+type Tab = 'overview' | 'personas' | 'tokens' | 'feedback' | 'quality'
 
 const TABS: Array<{ key: Tab; label: string }> = [
   { key: 'overview', label: 'Overview' },
   { key: 'personas', label: 'Personas' },
   { key: 'tokens', label: 'Tokens' },
   { key: 'feedback', label: 'Feedback' },
+  { key: 'quality', label: 'Quality' },
 ]
 
 const PERIODS = [
@@ -55,6 +81,7 @@ const PERIODS = [
 
 export default function AdminAnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null)
+  const [qualityData, setQualityData] = useState<QualityData | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [period, setPeriod] = useState('30d')
 
@@ -67,6 +94,16 @@ export default function AdminAnalyticsPage() {
     return () => { cancelled = true }
   }, [period])
 
+  useEffect(() => {
+    if (activeTab !== 'quality') return
+    let cancelled = false
+    fetch(`/api/admin/quality?period=${period}`)
+      .then(res => res.json())
+      .then(d => { if (!cancelled) setQualityData(d) })
+      .catch(console.error)
+    return () => { cancelled = true }
+  }, [activeTab, period])
+
   if (!data) return <div className="text-gray-500">Loading analytics...</div>
 
   const totalConversations = data.dailyConversations.reduce((sum, d) => sum + d.count, 0)
@@ -78,7 +115,7 @@ export default function AdminAnalyticsPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Analytics</h1>
         <select
           value={period}
-          onChange={e => setPeriod(e.target.value)}
+          onChange={e => { setPeriod(e.target.value); setQualityData(null) }}
           className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
         >
           {PERIODS.map(p => (
@@ -92,7 +129,7 @@ export default function AdminAnalyticsPage() {
         {TABS.map(tab => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => { if (tab.key === 'quality' && activeTab !== 'quality') setQualityData(null); setActiveTab(tab.key) }}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab.key
                 ? 'border-blue-500 text-blue-600 dark:text-blue-400'
@@ -191,6 +228,51 @@ export default function AdminAnalyticsPage() {
             <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Feedback Type Distribution</h2>
             <FeedbackChart typeDistribution={data.feedbackStats.typeDistribution} />
           </div>
+        </div>
+      )}
+
+      {activeTab === 'quality' && (
+        <div className="space-y-6">
+          {!qualityData ? (
+            <div className="text-gray-500">Loading quality data...</div>
+          ) : (
+            <>
+              {/* Quality KPI Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <KPICard title="Thumbs Up Rate" value={`${Math.round(qualityData.overallQuality.thumbsUpRate * 100)}%`} />
+                <KPICard title="Avg Rating" value={qualityData.overallQuality.avgRating > 0 ? qualityData.overallQuality.avgRating.toFixed(1) : '-'} />
+                <KPICard title="Total Feedback" value={qualityData.overallQuality.totalFeedbackCount} />
+                <KPICard title="Thumbs Up / Down" value={`${qualityData.overallQuality.thumbsUpCount} / ${qualityData.overallQuality.thumbsDownCount}`} />
+              </div>
+
+              {/* Feedback Trend */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Feedback Trend</h2>
+                <FeedbackTrendChart data={qualityData.feedbackTrend} />
+              </div>
+
+              {/* Quality by Persona */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Quality by Persona</h2>
+                <QualityBarChart data={qualityData.personaQuality} />
+              </div>
+
+              {/* Type Distribution Table */}
+              {qualityData.typeDistribution.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                  <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Feedback Categories</h2>
+                  <div className="space-y-2">
+                    {qualityData.typeDistribution.map(t => (
+                      <div key={t.type} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">{t.type}</span>
+                        <span className="text-sm text-gray-500">{t.count} feedbacks</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

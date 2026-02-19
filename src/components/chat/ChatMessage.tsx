@@ -1,17 +1,28 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import ReactMarkdown from 'react-markdown'
-import { Message } from '@/types/chat'
+import { Message, MessageFeedback } from '@/types/chat'
 import { Persona } from '@/hooks/usePersonas'
+import { FeedbackModal } from './FeedbackModal'
+
+interface FeedbackState {
+  thumbsUp: boolean
+}
 
 interface ChatMessageProps {
   message: Message
   persona?: Persona | null
   isLast?: boolean
+  conversationId?: string
+  feedbackState?: FeedbackState
+  onFeedbackSubmit?: (messageId: string, feedback: MessageFeedback) => void
 }
 
-export function ChatMessage({ message, persona }: ChatMessageProps) {
+export function ChatMessage({ message, persona, conversationId, feedbackState, onFeedbackSubmit }: ChatMessageProps) {
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [pendingThumbsUp, setPendingThumbsUp] = useState(true)
   const isUser = message.role === 'user'
 
   return (
@@ -143,17 +154,75 @@ export function ChatMessage({ message, persona }: ChatMessageProps) {
         {/* Message Actions (visible on hover) */}
         {!isUser && (
           <div className="absolute -bottom-8 left-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-2">
-            <button className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+            {/* Copy button */}
+            <button
+              onClick={() => navigator.clipboard.writeText(message.content)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              title="Copy"
+            >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
             </button>
-            <button className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            {/* ThumbsUp */}
+            <button
+              onClick={() => {
+                if (!feedbackState && onFeedbackSubmit) {
+                  onFeedbackSubmit(message.id, { thumbsUp: true })
+                }
+              }}
+              disabled={!!feedbackState}
+              className={`p-1.5 rounded-lg transition-colors ${
+                feedbackState?.thumbsUp === true
+                  ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
+                  : 'text-slate-400 hover:text-emerald-500 hover:bg-slate-100 dark:hover:bg-slate-700'
+              } disabled:cursor-default`}
+              title="Helpful"
+            >
+              <svg className="w-4 h-4" fill={feedbackState?.thumbsUp === true ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3" />
               </svg>
             </button>
+            {/* ThumbsDown */}
+            <button
+              onClick={() => {
+                if (!feedbackState && onFeedbackSubmit) {
+                  onFeedbackSubmit(message.id, { thumbsUp: false })
+                }
+              }}
+              disabled={!!feedbackState}
+              className={`p-1.5 rounded-lg transition-colors ${
+                feedbackState?.thumbsUp === false
+                  ? 'text-red-500 bg-red-50 dark:bg-red-900/30'
+                  : 'text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-700'
+              } disabled:cursor-default`}
+              title="Not helpful"
+            >
+              <svg className="w-4 h-4" fill={feedbackState?.thumbsUp === false ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 15v3.586a1 1 0 01-.293.707l-.293.293A1 1 0 018 20H7a2 2 0 01-2-2v-5a2 2 0 012-2h3.28a2 2 0 011.94 1.515l1.45 5.8A2 2 0 0111.73 20H10zM7 2h3a2 2 0 012 2v5a2 2 0 01-2 2H7V2zm0 0H4a2 2 0 00-2 2v7a2 2 0 002 2h3V2z" />
+              </svg>
+            </button>
+            {/* Detail Feedback */}
+            {feedbackState && conversationId && (
+              <button
+                onClick={() => {
+                  setPendingThumbsUp(feedbackState.thumbsUp)
+                  setShowFeedbackModal(true)
+                }}
+                className="text-xs text-violet-500 hover:text-violet-600 ml-1 transition-colors"
+              >
+                Detail
+              </button>
+            )}
           </div>
+        )}
+        {showFeedbackModal && onFeedbackSubmit && (
+          <FeedbackModal
+            isOpen={showFeedbackModal}
+            onClose={() => setShowFeedbackModal(false)}
+            onSubmit={(feedback) => onFeedbackSubmit(message.id, feedback)}
+            initialThumbsUp={pendingThumbsUp}
+          />
         )}
       </div>
 

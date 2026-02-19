@@ -321,6 +321,7 @@ export default function ChatPage() {
             selectedPersona={selectedPersona}
             personas={personas}
             onSelectPersona={handleSelectPersonaFromGrid}
+            conversationId={conversationId ?? undefined}
           />
         </div>
       </div>

@@ -22,6 +22,7 @@ export function ConversationList({
       <div className="p-4">
         <button
           onClick={onNewChat}
+          data-testid="new-chat-button"
           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
         >
           <svg
@@ -48,6 +49,7 @@ export function ConversationList({
             {conversations.map((conversation) => (
               <div
                 key={conversation.id}
+                data-testid="conversation-item"
                 className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
                   currentConversationId === conversation.id
                     ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
@@ -78,6 +80,7 @@ export function ConversationList({
                       e.stopPropagation()
                       onDelete(conversation.id)
                     }}
+                    data-testid="delete-conversation-button"
                     className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-all"
                   >
                     <svg

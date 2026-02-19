@@ -74,6 +74,18 @@ Talk With Legends는 유명 인물(기업가, 투자자, 기술 리더 등)의 �
   - Feedback: 피드백 유형 분포 + thumbsUp 비율
   - 기간 필터 (7d/30d/90d)
 
+### Phase 6 (완료) - 답변 품질 평가 & E2E 테스트
+- [x] 답변 품질 평가 시스템
+  - ThumbsUp/Down 피드백 수집 (ChatMessage 인라인)
+  - 상세 피드백 모달 (카테고리, 별점, 코멘트)
+  - 피드백 수집 API (`POST /api/conversations/:id/feedback`)
+  - 품질 분석 API (`GET /api/admin/quality`)
+  - Quality 대시보드 탭 (KPI, 트렌드 차트, 페르소나별 품질 바차트)
+- [x] Playwright E2E 테스트 도입
+  - 6개 테스트 시나리오 (landing, auth, chat, conversations, settings, admin-access)
+  - API mock 핸들러 (browser-level route intercept)
+  - Dev mode 자동 인증 setup
+
 자세한 로드맵은 [ROADMAP.md](./ROADMAP.md)를 참조하세요.
 
 ### 관련 문서
@@ -219,6 +231,19 @@ DELETE /api/admin/sources/:id          # 소스 삭제 (soft delete → ARCHIVED
 POST   /api/admin/sources/:id/trigger  # 수동 수집 트리거
 GET    /api/admin/pipeline             # 파이프라인 상태 (documents, chunks, sources, fetchLogs)
 GET    /api/admin/analytics?period=30d  # 고급 분석 (personaStats, dailyConversations, tokenStats, feedbackStats, topUsers)
+GET    /api/admin/quality?period=30d   # 답변 품질 분석 (overallQuality, personaQuality, feedbackTrend, typeDistribution)
+```
+
+### 피드백
+```
+POST /api/conversations/:id/feedback
+{
+  "messageId": "msg-123",
+  "thumbsUp": true,
+  "feedbackType": "accuracy",  // optional: accuracy|style|helpfulness|other
+  "comment": "Great answer!",  // optional
+  "rating": 5                  // optional: 1-5
+}
 ```
 
 ## 프로젝트 구조
@@ -295,17 +320,22 @@ talk-with/
 
 ## 테스트
 
-Vitest + Testing Library 기반 테스트 인프라 구축 완료.
+Vitest + Testing Library 기반 단위/통합 테스트 + Playwright E2E 테스트 인프라.
 
 ```bash
-npm test              # 전체 테스트 실행
+npm test              # 단위/통합 테스트 실행
 npm run test:watch    # 워치 모드
 npm run test:coverage # 커버리지 리포트
+npm run test:e2e      # E2E 테스트 실행 (Playwright)
+npm run test:e2e:ui   # E2E UI 모드
+npm run test:e2e:headed # E2E 브라우저 표시
 ```
+
+### 단위/통합 테스트
 
 | 항목 | 수치 |
 |------|------|
-| 테스트 케이스 | 236개 |
+| 테스트 케이스 | 255개 |
 | Statements | 91%+ |
 | Branches | 82%+ |
 | Functions | 97%+ |
@@ -314,6 +344,17 @@ npm run test:coverage # 커버리지 리포트
 테스트 구조:
 - **Server** (Node 환경): API Route, lib 유틸리티
 - **Client** (jsdom 환경): React hooks, 컴포넌트
+
+### E2E 테스트
+
+| 시나리오 | 설명 |
+|----------|------|
+| Landing | 로그인 페이지 로드, OAuth 버튼, 미인증 리다이렉트 |
+| Auth | 로그인 UI, Dev 로그인, 설정 접근 차단 |
+| Chat | 페르소나 그리드, 선택, 메시지 전송 |
+| Conversations | 대화 목록, 선택, New Chat, 삭제 |
+| Settings | 설정 로드, 테마, 프로필 |
+| Admin Access | 일반 유저 admin 접근 차단 |
 
 ## 라이선스
 

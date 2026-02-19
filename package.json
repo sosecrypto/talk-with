@@ -19,7 +19,10 @@
     "n8n:logs": "docker compose -f n8n/docker-compose.yml logs -f",
     "n8n:import": "node scripts/n8n-import.mjs",
     "n8n:import:activate": "node scripts/n8n-import.mjs --activate",
-    "n8n:import:dry-run": "node scripts/n8n-import.mjs --dry-run"
+    "n8n:import:dry-run": "node scripts/n8n-import.mjs --dry-run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
@@ -43,6 +46,7 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

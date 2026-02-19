@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { Message } from '@/types/chat'
+import { Message, MessageFeedback } from '@/types/chat'
 import { Persona } from '@/hooks/usePersonas'
+import { useFeedback } from '@/hooks/useFeedback'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 
@@ -19,6 +20,7 @@ interface ChatWindowProps {
   selectedPersona?: Persona | null
   personas?: Persona[]
   onSelectPersona?: (persona: Persona) => void
+  conversationId?: string
 }
 
 export function ChatWindow({
@@ -28,7 +30,13 @@ export function ChatWindow({
   selectedPersona,
   personas = [],
   onSelectPersona,
+  conversationId,
 }: ChatWindowProps) {
+  const { feedbackMap, submitFeedback } = useFeedback(conversationId)
+
+  const handleFeedback = (messageId: string, feedback: MessageFeedback) => {
+    submitFeedback(messageId, feedback)
+  }
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -160,11 +168,12 @@ export function ChatWindow({
                 <h3 className="text-center text-sm font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-8">
                   Choose a Legend
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+                <div data-testid="persona-grid" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
                   {personas.slice(0, 8).map((persona, idx) => (
                     <button
                       key={persona.id}
                       onClick={() => onSelectPersona?.(persona)}
+                      data-testid="persona-grid-item"
                       className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 p-6 transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50"
                       style={{
                         animationDelay: `${idx * 100}ms`,
@@ -274,13 +283,16 @@ export function ChatWindow({
             )}
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
+          <div data-testid="message-list" className="max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
             {messages.map((message, idx) => (
               <ChatMessage
                 key={message.id}
                 message={message}
                 persona={selectedPersona}
                 isLast={idx === messages.length - 1}
+                conversationId={conversationId}
+                feedbackState={feedbackMap[message.id]}
+                onFeedbackSubmit={handleFeedback}
               />
             ))}
 

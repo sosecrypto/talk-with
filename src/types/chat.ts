@@ -38,3 +38,10 @@ export interface SendMessageParams {
   conversationId?: string
   attachments?: File[]
 }
+
+export interface MessageFeedback {
+  thumbsUp: boolean
+  feedbackType?: 'accuracy' | 'style' | 'helpfulness' | 'other'
+  comment?: string
+  rating?: number
+}

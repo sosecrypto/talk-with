@@ -54,10 +54,12 @@ function LoginContent() {
                 onChange={(e) => setTestEmail(e.target.value)}
                 className="w-full px-3 py-2 border border-yellow-300 dark:border-yellow-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 placeholder="test@example.com"
+                data-testid="test-email-input"
               />
               <button
                 onClick={handleTestLogin}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-colors"
+                data-testid="test-login-button"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />

@@ -46,6 +46,7 @@ export function PersonaSelector({
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
+        data-testid="persona-selector-trigger"
         className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all w-full ${
           selectedPersona
             ? 'bg-gradient-to-r text-white shadow-md'
@@ -163,6 +164,7 @@ export function PersonaSelector({
                 <button
                   key={persona.id}
                   onClick={() => handleSelect(persona)}
+                  data-testid="persona-option"
                   className={`relative w-full overflow-hidden transition-all ${
                     selectedPersona?.id === persona.id ? 'ring-2 ring-blue-500' : ''
                   }`}

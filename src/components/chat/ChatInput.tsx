@@ -199,6 +199,7 @@ export function ChatInput({
             disabled={disabled}
             rows={1}
             enterKeyHint="send"
+            data-testid="chat-textarea"
             className="flex-1 resize-none bg-transparent px-2 py-2.5 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none disabled:opacity-50 text-[15px] leading-relaxed"
           />
 
@@ -208,6 +209,7 @@ export function ChatInput({
             <button
               onClick={handleSend}
               disabled={disabled || (!message.trim() && images.length === 0)}
+              data-testid="chat-send-button"
               className="flex-shrink-0 p-3 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg"
               style={{
                 backgroundColor: (message.trim() || images.length > 0) ? accentColor : '#94A3B8',
